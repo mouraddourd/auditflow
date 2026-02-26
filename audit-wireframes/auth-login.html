@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuditFlow - Connexion</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Inter', -apple-system, sans-serif; 
+      background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .auth-container {
+      width: 100%;
+      max-width: 420px;
+      padding: 40px;
+    }
+    
+    .auth-card {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 40px;
+    }
+    
+    .logo {
+      font-size: 32px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    
+    .tagline {
+      text-align: center;
+      color: #6b7280;
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+    
+    .auth-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 32px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 4px;
+    }
+    
+    .auth-tab {
+      flex: 1;
+      padding: 12px;
+      background: transparent;
+      border: none;
+      color: #6b7280;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    
+    .auth-tab.active {
+      background: rgba(99, 102, 241, 0.2);
+      color: #a5b4fc;
+    }
+    
+    .form-group { margin-bottom: 20px; }
+    
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      color: #9ca3af;
+      margin-bottom: 8px;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 14px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+    }
+    
+    .form-group input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+    
+    .form-group input::placeholder {
+      color: #4b5563;
+    }
+    
+    .btn-submit {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: all 0.2s;
+    }
+    
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 40px rgba(99, 102, 241, 0.4);
+    }
+    
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 24px 0;
+      color: #4b5563;
+      font-size: 13px;
+    }
+    
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .social-login {
+      display: flex;
+      gap: 12px;
+    }
+    
+    .btn-social {
+      flex: 1;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .forgot-password {
+      text-align: center;
+      margin-top: 20px;
+    }
+    
+    .forgot-password a {
+      color: #6366f1;
+      text-decoration: none;
+      font-size: 13px;
+    }
+    
+    .back-link {
+      text-align: center;
+      margin-top: 24px;
+    }
+    
+    .back-link a {
+      color: #6b7280;
+      text-decoration: none;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="logo">⚡ AuditFlow</div>
+      <p class="tagline">Créez des audits professionnels en 5 minutes</p>
+      
+      <div class="auth-tabs">
+        <button class="auth-tab active">Connexion</button>
+        <button class="auth-tab">Inscription</button>
+      </div>
+      
+      <form>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" placeholder="votre@email.com">
+        </div>
+        
+        <div class="form-group">
+          <label>Mot de passe</label>
+          <input type="password" placeholder="••••••••">
+        </div>
+        
+        <button type="submit" class="btn-submit" onclick="window.location.href='dashboard.html'">Se connecter</button>
+      </form>
+      
+      <div class="divider">ou</div>
+      
+      <div class="social-login">
+        <button class="btn-social">🔍 Google</button>
+        <button class="btn-social">💼 LinkedIn</button>
+      </div>
+      
+      <div class="forgot-password">
+        <a href="#">Mot de passe oublié ?</a>
+      </div>
+      
+      <div class="back-link">
+        <a href="landing-modern.html">← Retour à l'accueil</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

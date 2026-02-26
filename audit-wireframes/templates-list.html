@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuditFlow - Mes Templates</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', -apple-system, sans-serif; background: #0f0f12; color: #fff; }
+    
+    .app { display: flex; min-height: 100vh; }
+    
+    .sidebar {
+      width: 260px;
+      background: #16161a;
+      border-right: 1px solid rgba(255,255,255,0.06);
+      padding: 24px 16px;
+    }
+    
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 40px;
+      padding-left: 12px;
+    }
+    
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      color: #8b8b9a;
+      cursor: pointer;
+      margin-bottom: 4px;
+    }
+    
+    .nav-item:hover { background: rgba(255,255,255,0.04); color: #fff; }
+    .nav-item.active { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; }
+    
+    .main { flex: 1; padding: 32px; overflow-y: auto; }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+    
+    h1 { font-size: 28px; font-weight: 700; }
+    
+    .btn-new {
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    
+    .search-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    
+    .search-input {
+      flex: 1;
+      padding: 12px 16px;
+      background: #1a1a20;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+    }
+    
+    .search-input::placeholder { color: #6b7280; }
+    
+    .filter-btn {
+      padding: 12px 20px;
+      background: #1a1a20;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px;
+      color: #8b8b9a;
+      cursor: pointer;
+    }
+    
+    .templates-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    
+    .template-card {
+      background: #1a1a20;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      padding: 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .template-card:hover {
+      border-color: rgba(99, 102, 241, 0.3);
+      transform: translateY(-4px);
+    }
+    
+    .template-icon {
+      width: 48px;
+      height: 48px;
+      background: rgba(99, 102, 241, 0.15);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 16px;
+    }
+    
+    .template-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    .template-desc {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    
+    .template-meta {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: #4b5563;
+    }
+    
+    .template-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    
+    .btn-action {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: transparent;
+      color: #6b7280;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    
+    .btn-action.primary {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="logo">⚡ AuditFlow</div>
+      <div class="nav-item" onclick="window.location.href='dashboard.html'">
+        <span>📊</span>
+        <span>Dashboard</span>
+      </div>
+      <div class="nav-item" onclick="window.location.href='dashboard.html'">
+        <span>📝</span>
+        <span>Mes audits</span>
+      </div>
+      <div class="nav-item active">
+        <span>📋</span>
+        <span>Templates</span>
+      </div>
+      <div class="nav-item" onclick="window.location.href='settings.html'">
+        <span>⚙️</span>
+        <span>Paramètres</span>
+      </div>
+    </aside>
+    
+    <main class="main">
+      <div class="header">
+        <h1>Mes Templates</h1>
+        <button class="btn-new" onclick="window.location.href='template-create.html'">+ Nouveau template</button>
+      </div>
+      
+      <div class="search-bar">
+        <input type="text" class="search-input" placeholder="Rechercher un template...">
+        <button class="filter-btn">🔍 Filtrer</button>
+      </div>
+      
+      <div class="templates-grid">
+        <div class="template-card" onclick="window.location.href='audit-create-from-template.html'">
+          <div class="template-icon">📋</div>
+          <div class="template-title">Audit Qualité Labo</div>
+          <div class="template-desc">Template pour audits qualité en laboratoire avec checklist complète</div>
+          <div class="template-meta">
+            <span>12 questions</span>
+            <span>Modifié il y a 2j</span>
+          </div>
+          <div class="template-actions">
+            <button class="btn-action">✏️ Modifier</button>
+            <button class="btn-action primary" onclick="window.location.href='audit-create-from-template.html'">Utiliser</button>
+          </div>
+        </div>
+        
+        <div class="template-card">
+          <div class="template-icon">🔒</div>
+          <div class="template-title">Audit Sécurité</div>
+          <div class="template-desc">Évaluation des équipements de sécurité et conformité</div>
+          <div class="template-meta">
+            <span>8 questions</span>
+            <span>Modifié il y a 5j</span>
+          </div>
+          <div class="template-actions">
+            <button class="btn-action">✏️ Modifier</button>
+            <button class="btn-action primary" onclick="window.location.href='audit-create-from-template.html'">Utiliser</button>
+          </div>
+        </div>
+        
+        <div class="template-card">
+          <div class="template-icon">📄</div>
+          <div class="template-title">Audit Documentaire</div>
+          <div class="template-desc">Vérification des documents et procédures</div>
+          <div class="template-meta">
+            <span>15 questions</span>
+            <span>Modifié il y a 1 semaine</span>
+          </div>
+          <div class="template-actions">
+            <button class="btn-action">✏️ Modifier</button>
+            <button class="btn-action primary" onclick="window.location.href='audit-create-from-template.html'">Utiliser</button>
+          </div>
+        </div>
+        
+        <div class="template-card">
+          <div class="template-icon">🏭</div>
+          <div class="template-title">Audit Fournisseur</div>
+          <div class="template-desc">Évaluation des fournisseurs et prestataires externes</div>
+          <div class="template-meta">
+            <span>10 questions</span>
+            <span>Modifié il y a 2 semaines</span>
+          </div>
+          <div class="template-actions">
+            <button class="btn-action">✏️ Modifier</button>
+            <button class="btn-action primary" onclick="window.location.href='audit-create-from-template.html'">Utiliser</button>
+          </div>
+        </div>
+        
+        <div class="template-card">
+          <div class="template-icon">⚙️</div>
+          <div class="template-title">Maintenance Équipement</div>
+          <div class="template-desc">Suivi de maintenance des équipements techniques</div>
+          <div class="template-meta">
+            <span>6 questions</span>
+            <span>Modifié il y a 3 semaines</span>
+          </div>
+          <div class="template-actions">
+            <button class="btn-action">✏️ Modifier</button>
+            <button class="btn-action primary" onclick="window.location.href='audit-create-from-template.html'">Utiliser</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

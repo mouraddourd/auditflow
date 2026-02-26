@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuditFlow - Landing Page Modern</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', -apple-system, sans-serif; background: #0a0a0f; color: #fff; }
+    
+    .hero {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 50%);
+      animation: pulse 8s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+    
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px 48px;
+      position: relative;
+      z-index: 10;
+    }
+    
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .hero-content {
+      max-width: 800px;
+      margin: 80px auto;
+      text-align: center;
+      position: relative;
+      z-index: 10;
+      padding: 0 24px;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 8px 16px;
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 50px;
+      font-size: 14px;
+      color: #a5b4fc;
+      margin-bottom: 24px;
+    }
+    
+    h1 {
+      font-size: 56px;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 24px;
+    }
+    
+    h1 span {
+      background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .subtitle {
+      font-size: 20px;
+      color: #9ca3af;
+      margin-bottom: 48px;
+      line-height: 1.6;
+    }
+    
+    .cta-box {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 32px;
+      max-width: 500px;
+      margin: 0 auto 48px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .input-group {
+      display: flex;
+      gap: 12px;
+    }
+    
+    input[type="email"] {
+      flex: 1;
+      padding: 16px 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      font-size: 16px;
+      outline: none;
+      transition: all 0.3s;
+    }
+    
+    input[type="email"]:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+    
+    input[type="email"]::placeholder {
+      color: #6b7280;
+    }
+    
+    .btn-primary {
+      padding: 16px 32px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 40px rgba(99, 102, 241, 0.4);
+    }
+    
+    .cta-note {
+      font-size: 14px;
+      color: #6b7280;
+      margin-top: 16px;
+    }
+    
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    
+    .feature-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 32px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+    
+    .feature-card:hover {
+      background: rgba(255, 255, 255, 0.06);
+      transform: translateY(-4px);
+    }
+    
+    .feature-icon {
+      font-size: 40px;
+      margin-bottom: 16px;
+    }
+    
+    .feature-card h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+    
+    .feature-card p {
+      font-size: 14px;
+      color: #6b7280;
+    }
+    
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 64px;
+      margin-top: 80px;
+      padding: 0 24px;
+    }
+    
+    .stat {
+      text-align: center;
+    }
+    
+    .stat-number {
+      font-size: 48px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .stat-label {
+      font-size: 14px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <nav class="nav">
+      <div class="logo">⚡ AuditFlow</div>
+    </nav>
+    
+    <div class="hero-content">
+      <div class="badge">🚀 Bientôt disponible</div>
+      <h1>Créez des audits <span>professionnels</span><br>en 5 minutes</h1>
+      <p class="subtitle">La solution tout-en-un pour créer, envoyer et analyser vos audits.<br>Gain de temps • Standardisation • Traçabilité</p>
+      
+      <div class="cta-box">
+        <form class="input-group" onsubmit="window.location.href='auth-login.html'; return false;">
+          <input type="email" placeholder="votre@email.com">
+          <button type="submit" class="btn-primary">Rejoindre la waitlist</button>
+        </form>
+        <p class="cta-note">📧 Entrez votre email pour être notifié du lancement</p>
+      </div>
+      
+      <div class="features">
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Rapide</h3>
+          <p>Créez un audit en quelques clics</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3>Rapports</h3>
+          <p>Générez des PDF professionnels</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔒</div>
+          <h3>Sécurisé</h3>
+          <p>Vos données sont chiffrées</p>
+        </div>
+      </div>
+      
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-number">5min</div>
+          <div class="stat-label">Temps moyen</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">100%</div>
+          <div class="stat-label">Personnalisable</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">0</div>
+          <div class="stat-label">Configuration</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

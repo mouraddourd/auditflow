@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuditFlow - Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', -apple-system, sans-serif; background: #0f0f12; color: #fff; }
+    
+    .app { display: flex; min-height: 100vh; }
+    
+    .sidebar {
+      width: 260px;
+      background: #16161a;
+      border-right: 1px solid rgba(255,255,255,0.06);
+      padding: 24px 16px;
+    }
+    
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 40px;
+      padding-left: 12px;
+    }
+    
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      color: #8b8b9a;
+      cursor: pointer;
+      margin-bottom: 4px;
+    }
+    
+    .nav-item:hover { background: rgba(255,255,255,0.04); color: #fff; }
+    .nav-item.active { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; }
+    
+    .main { flex: 1; padding: 32px; overflow-y: auto; }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    
+    h1 { font-size: 28px; font-weight: 700; }
+    
+    .btn-new {
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    
+    /* Onglets */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 24px;
+      background: #1a1a20;
+      padding: 6px;
+      border-radius: 12px;
+      width: fit-content;
+    }
+    
+    .tab {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #6b7280;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+    }
+    
+    .tab:hover { color: #fff; }
+    .tab.active { background: #6366f1; color: #fff; }
+    
+    /* Stats */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .stat-card {
+      background: #1a1a20;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    
+    .stat-label { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+    .stat-value { font-size: 28px; font-weight: 700; }
+    .stat-change { font-size: 11px; color: #10b981; margin-top: 6px; }
+    
+    /* Liste audits */
+    .audit-card {
+      background: #1a1a20;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .audit-card:hover { border-color: rgba(99, 102, 241, 0.3); }
+    
+    .audit-info h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .audit-meta { font-size: 12px; color: #6b7280; }
+    
+    .audit-right { display: flex; align-items: center; gap: 12px; }
+    
+    .audit-score {
+      font-size: 14px;
+      font-weight: 600;
+      color: #a5b4fc;
+    }
+    
+    .audit-status {
+      padding: 5px 12px;
+      border-radius: 16px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    
+    .status-draft { background: rgba(107, 114, 128, 0.2); color: #9ca3af; }
+    .status-active { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .status-completed { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    
+    .btn-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: transparent;
+      color: #6b7280;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+    
+    .btn-icon:hover { background: rgba(255,255,255,0.05); color: #fff; }
+    
+    /* Section templates */
+    .templates-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    
+    .template-card {
+      background: #1a1a20;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .template-card:hover { border-color: rgba(99, 102, 241, 0.3); }
+    
+    .template-icon {
+      width: 40px;
+      height: 40px;
+      background: rgba(99, 102, 241, 0.2);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+    
+    .template-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .template-meta { font-size: 12px; color: #6b7280; }
+    
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="logo">⚡ AuditFlow</div>
+      <div class="nav-item active">
+        <span>📊</span>
+        <span>Dashboard</span>
+      </div>
+      <div class="nav-item" onclick="window.location.href='templates-list.html'">
+        <span>📋</span>
+        <span>Templates</span>
+      </div>
+      <div class="nav-item" onclick="window.location.href='settings.html'">
+        <span>⚙️</span>
+        <span>Paramètres</span>
+      </div>
+    </aside>
+    
+    <main class="main">
+      <div class="header">
+        <h1>Dashboard</h1>
+        <button class="btn-new" onclick="window.location.href='audit-create-from-template.html'">+ Nouvel audit</button>
+      </div>
+      
+      <!-- Onglets -->
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('audits')">Mes audits</button>
+        <button class="tab" onclick="showTab('templates')">Templates rapides</button>
+      </div>
+      
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total audits</div>
+          <div class="stat-value">24</div>
+          <div class="stat-change">↑ 12% ce mois</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">En cours</div>
+          <div class="stat-value">8</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Terminés</div>
+          <div class="stat-value">16</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Score moyen</div>
+          <div class="stat-value">76%</div>
+        </div>
+      </div>
+      
+      <!-- Liste audits -->
+      <div id="audits-tab">
+        <div class="audit-card" onclick="window.location.href='audit-fill.html'">
+          <div class="audit-info">
+            <h3>Audit Qualité Labo A</h3>
+            <div class="audit-meta">20 fév 2026 • 5 questions</div>
+          </div>
+          <div class="audit-right">
+            <span class="audit-score">76%</span>
+            <span class="audit-status status-active">En cours</span>
+            <button class="btn-icon">→</button>
+          </div>
+        </div>
+        
+        <div class="audit-card" onclick="window.location.href='results.html'">
+          <div class="audit-info">
+            <h3>Audit Sécurité B</h3>
+            <div class="audit-meta">18 fév 2026 • 8 questions</div>
+          </div>
+          <div class="audit-right">
+            <span class="audit-score">92%</span>
+            <span class="audit-status status-completed">Terminé</span>
+            <button class="btn-icon">📄</button>
+          </div>
+        </div>
+        
+        <div class="audit-card">
+          <div class="audit-info">
+            <h3>Audit Conformité C</h3>
+            <div class="audit-meta">15 fév 2026 • 20 questions</div>
+          </div>
+          <div class="audit-right">
+            <span class="audit-status status-draft">Brouillon</span>
+            <button class="btn-icon">✏️</button>
+          </div>
+        </div>
+        
+        <div class="audit-card">
+          <div class="audit-info">
+            <h3>Audit Environnement D</h3>
+            <div class="audit-meta">10 fév 2026 • 15 questions</div>
+          </div>
+          <div class="audit-right">
+            <span class="audit-score">85%</span>
+            <span class="audit-status status-completed">Terminé</span>
+            <button class="btn-icon">📄</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Templates rapides -->
+      <div id="templates-tab" class="hidden">
+        <div class="templates-grid">
+          <div class="template-card" onclick="window.location.href='audit-create-from-template.html'">
+            <div class="template-icon">🏭</div>
+            <div class="template-name">Qualité ISO</div>
+            <div class="template-meta">12 questions</div>
+          </div>
+          
+          <div class="template-card" onclick="window.location.href='audit-create-from-template.html'">
+            <div class="template-icon">🔒</div>
+            <div class="template-name">Sécurité</div>
+            <div class="template-meta">8 questions</div>
+          </div>
+          
+          <div class="template-card" onclick="window.location.href='audit-create-from-template.html'">
+            <div class="template-icon">🌿</div>
+            <div class="template-name">Environnement</div>
+            <div class="template-meta">15 questions</div>
+          </div>
+          
+          <div class="template-card" onclick="window.location.href='template-create.html'">
+            <div class="template-icon" style="background: rgba(16, 185, 129, 0.2);">+</div>
+            <div class="template-name">Créer un template</div>
+            <div class="template-meta">Personnalisé</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <script>
+    function showTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      
+      document.getElementById('audits-tab').classList.toggle('hidden', tab !== 'audits');
+      document.getElementById('templates-tab').classList.toggle('hidden', tab !== 'templates');
+    }
+  </script>
+</body>
+</html>
