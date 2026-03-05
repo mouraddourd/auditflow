@@ -19,14 +19,98 @@ import 'screens/templates/templates_list_screen.dart';
 import 'screens/templates/create_template_screen.dart';
 import 'screens/results/results_screen.dart';
 import 'screens/settings/settings_screen.dart';
+import 'screens/error/init_error_screen.dart';
 
-void main() async {
+/// App initialization wrapper that handles startup errors.
+///
+/// Shows an error screen if PowerSync initialization fails,
+/// allowing the user to retry without restarting the app.
+class AppInitializer extends StatefulWidget {
+  const AppInitializer({super.key});
+
+  @override
+  State<AppInitializer> createState() => _AppInitializerState();
+}
+
+class _AppInitializerState extends State<AppInitializer> {
+  /// Initialization state
+  bool _initialized = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _initialize();
+  }
+
+  /// Initializes all required services.
+  ///
+  /// Currently initializes:
+  /// - PowerSync: Local SQLite database for offline-first sync
+  ///
+  /// If initialization fails, sets [_error] to show error screen.
+  Future<void> _initialize() async {
+    setState(() {
+      _error = null;
+    });
+
+    try {
+      // PowerSync must be initialized before any database operations.
+      // It creates the local SQLite database with our schema.
+      await PowerSyncService().initialize();
+
+      setState(() {
+        _initialized = true;
+      });
+    } catch (e) {
+      debugPrint('Initialization failed: $e');
+      setState(() {
+        _error = e.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Show error screen if initialization failed
+    if (_error != null) {
+      return InitErrorScreen(
+        error: _error!,
+        onRetry: _initialize,
+      );
+    }
+
+    // Show loading while initializing
+    if (!_initialized) {
+      return MaterialApp(
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        home: const Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Initialisation...'),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Initialization successful, run the app
+    return const AuditFlowApp();
+  }
+}
+
+void main() {
+  // Required for async operations in main
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize PowerSync
-  await PowerSyncService().initialize();
-
-  runApp(const AuditFlowApp());
+  // Run the initialization wrapper instead of the app directly
+  runApp(const AppInitializer());
 }
 
 class AuditFlowApp extends StatelessWidget {
