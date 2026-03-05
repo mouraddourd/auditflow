@@ -70,6 +70,36 @@ git checkout -b feature/backend-auth-jwt-3
 - Tester localement
 - Suivre les conventions de code du projet
 
+**Règles de qualité code:**
+
+- **Pas de code inutile**: Chaque ligne doit avoir une raison d'être
+  - Pas de fonctions vides ou non appelées
+  - Pas de variables non utilisées
+  - Pas de code mort ou commenté "pour plus tard"
+  - Pas de duplication de code
+
+- **Code bien commenté**: Le code doit être compréhensible
+  - Commenter le **POURQUOI**, pas le quoi (le code dit déjà le quoi)
+  - Documenter les fonctions publiques (docstrings)
+  - Expliquer les algorithmes complexes
+  - Ajouter des commentaires pour les edge cases
+  - Exemple:
+    ```dart
+    // ✅ BON: Explique le pourquoi
+    // PowerSync requires initialization before any database operations
+    // to ensure the SQLite schema is ready for sync
+    await PowerSyncService().initialize();
+
+    // ❌ MAUVAIS: Dit juste ce que fait le code (inutile)
+    // Initialize PowerSync
+    await PowerSyncService().initialize();
+    ```
+
+- **Code propre et lisible**:
+  - Noms de variables/fonctions explicites
+  - Fonctions courtes et focalisées (single responsibility)
+  - Pas de magic numbers (utiliser des constantes nommées)
+
 **Commit conventionnel:**
 ```
 <type>(<scope>): <description courte>
