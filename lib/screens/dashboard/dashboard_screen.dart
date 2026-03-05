@@ -2,11 +2,52 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../../powersync/service.dart';
 
-class DashboardScreen extends StatelessWidget {
+/// Dashboard screen with real-time stats from PowerSync.
+///
+/// Displays:
+/// - Audit statistics (total, completed, in progress, drafts)
+/// - Average score with trend indicator
+/// - Score evolution chart (placeholder for now)
+/// - Recent audits list from watchAudits stream
+class DashboardScreen extends StatefulWidget {
   final Function(int)? onNavigate;
   final Function(Widget)? onNavigateToPage;
   const DashboardScreen({super.key, this.onNavigate, this.onNavigateToPage});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  /// Audit statistics loaded from PowerSync
+  Map<String, dynamic> _stats = {};
+
+  /// Loading state for stats
+  bool _isLoadingStats = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  /// Loads audit statistics from PowerSync.
+  ///
+  /// Stats include: total, completed, in_progress, draft, avg_score
+  Future<void> _loadStats() async {
+    try {
+      final stats = await PowerSyncService().getAuditStats();
+      setState(() {
+        _stats = stats;
+        _isLoadingStats = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading stats: $e');
+      setState(() => _isLoadingStats = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,76 +88,83 @@ class DashboardScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    // Stat cards with animations
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isWide = constraints.maxWidth > 800;
-                        final cards = [
-                          _StatCard(
-                              title: 'Total Audits',
-                              value: '12',
-                              icon: FontAwesomeIcons.clipboardCheck,
-                              color: theme.colorScheme.primary),
-                          _StatCard(
-                              title: 'Terminés',
-                              value: '8',
-                              icon: FontAwesomeIcons.checkCircle,
-                              color: Colors.green),
-                          _StatCard(
-                              title: 'En cours',
-                              value: '3',
-                              icon: FontAwesomeIcons.spinner,
-                              color: Colors.orange),
-                          _StatCard(
-                              title: 'Brouillons',
-                              value: '1',
-                              icon: FontAwesomeIcons.edit,
-                              color: Colors.grey),
-                        ];
-                        return isWide
-                            ? Row(
-                                children: cards.asMap().entries.map((entry) {
-                                  return Expanded(
-                                    child: Padding(
-                                      padding: EdgeInsets.only(
-                                          right: entry.key < 3 ? 12 : 0),
+
+                    // Stat cards - real data from PowerSync
+                    if (_isLoadingStats)
+                      const Center(child: CircularProgressIndicator())
+                    else
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isWide = constraints.maxWidth > 800;
+                          final cards = [
+                            _StatCard(
+                                title: 'Total Audits',
+                                value: '${_stats['total'] ?? 0}',
+                                icon: FontAwesomeIcons.clipboardCheck,
+                                color: theme.colorScheme.primary),
+                            _StatCard(
+                                title: 'Terminés',
+                                value: '${_stats['completed'] ?? 0}',
+                                icon: FontAwesomeIcons.circleCheck,
+                                color: Colors.green),
+                            _StatCard(
+                                title: 'En cours',
+                                value: '${_stats['in_progress'] ?? 0}',
+                                icon: FontAwesomeIcons.spinner,
+                                color: Colors.orange),
+                            _StatCard(
+                                title: 'Brouillons',
+                                value: '${_stats['draft'] ?? 0}',
+                                icon: FontAwesomeIcons.penToSquare,
+                                color: Colors.grey),
+                          ];
+                          return isWide
+                              ? Row(
+                                  children: cards.asMap().entries.map((entry) {
+                                    return Expanded(
+                                      child: Padding(
+                                        padding: EdgeInsets.only(
+                                            right: entry.key < 3 ? 12 : 0),
+                                        child: entry.value
+                                            .animate()
+                                            .fadeIn(
+                                                delay: Duration(
+                                                    milliseconds:
+                                                        100 * entry.key))
+                                            .slideX(
+                                                begin: 0.2,
+                                                delay: Duration(
+                                                    milliseconds:
+                                                        100 * entry.key)),
+                                      ),
+                                    );
+                                  }).toList(),
+                                )
+                              : Wrap(
+                                  spacing: 12,
+                                  runSpacing: 12,
+                                  children: cards.asMap().entries.map((entry) {
+                                    return SizedBox(
+                                      width: (constraints.maxWidth - 12) / 2,
                                       child: entry.value
                                           .animate()
                                           .fadeIn(
                                               delay: Duration(
                                                   milliseconds:
                                                       100 * entry.key))
-                                          .slideX(
+                                          .slideY(
                                               begin: 0.2,
                                               delay: Duration(
                                                   milliseconds:
                                                       100 * entry.key)),
-                                    ),
-                                  );
-                                }).toList(),
-                              )
-                            : Wrap(
-                                spacing: 12,
-                                runSpacing: 12,
-                                children: cards.asMap().entries.map((entry) {
-                                  return SizedBox(
-                                    width: (constraints.maxWidth - 12) / 2,
-                                    child: entry.value
-                                        .animate()
-                                        .fadeIn(
-                                            delay: Duration(
-                                                milliseconds: 100 * entry.key))
-                                        .slideY(
-                                            begin: 0.2,
-                                            delay: Duration(
-                                                milliseconds: 100 * entry.key)),
-                                  );
-                                }).toList(),
-                              );
-                      },
-                    ),
+                                    );
+                                  }).toList(),
+                                );
+                        },
+                      ),
                     const SizedBox(height: 24),
-                    // Score moyen card with animation
+
+                    // Score moyen card - real average from PowerSync
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -143,7 +191,7 @@ class DashboardScreen extends StatelessWidget {
                                       color: Colors.white70, fontSize: 12),
                                 ),
                                 Text(
-                                  '78%',
+                                  '${(_stats['avg_score'] ?? 0).toStringAsFixed(0)}%',
                                   style:
                                       theme.textTheme.headlineSmall?.copyWith(
                                     color: Colors.white,
@@ -161,7 +209,7 @@ class DashboardScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Text(
-                              '+5% ce mois',
+                              'Global',
                               style:
                                   TextStyle(color: Colors.white, fontSize: 12),
                             ),
@@ -170,7 +218,8 @@ class DashboardScreen extends StatelessWidget {
                       ),
                     ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2),
                     const SizedBox(height: 24),
-                    // Graphique FL Chart
+
+                    // Graphique FL Chart - placeholder for future enhancement
                     Container(
                       height: 200,
                       padding: const EdgeInsets.all(16),
@@ -201,14 +250,19 @@ class DashboardScreen extends StatelessWidget {
                                 borderData: FlBorderData(show: false),
                                 lineBarsData: [
                                   LineChartBarData(
+                                    // TODO: Calculate from real audit data by month
                                     spots: [
-                                      const FlSpot(0, 65),
-                                      const FlSpot(1, 72),
-                                      const FlSpot(2, 68),
-                                      const FlSpot(3, 75),
-                                      const FlSpot(4, 78),
-                                      const FlSpot(5, 82),
-                                      const FlSpot(6, 78),
+                                      FlSpot(0, 65),
+                                      FlSpot(1, 72),
+                                      FlSpot(2, 68),
+                                      FlSpot(3, 75),
+                                      FlSpot(4, 78),
+                                      FlSpot(5, 82),
+                                      FlSpot(
+                                          6,
+                                          (_stats['avg_score'] as num?)
+                                                  ?.toDouble() ??
+                                              78),
                                     ],
                                     isCurved: true,
                                     color: theme.colorScheme.primary,
@@ -240,28 +294,72 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ),
             ),
-            // Recent audits with animations
+
+            // Recent audits from PowerSync stream
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _AuditCard(
-                      title: 'Audit Qualité Labo ${index + 1}',
-                      status: index % 3 == 0 ? 'completed' : 'in_progress',
-                      score: index % 3 == 0 ? 85 + index * 2 : null,
-                      date: 'Il y a ${index + 1} jour${index > 0 ? 's' : ''}',
-                    )
-                        .animate()
-                        .fadeIn(
-                            delay: Duration(milliseconds: 600 + (100 * index)))
-                        .slideX(
-                            begin: 0.1,
-                            delay: Duration(milliseconds: 600 + (100 * index))),
-                  ),
-                  childCount: 5,
-                ),
+              sliver: StreamBuilder<List<Map<String, dynamic>>>(
+                // Watch last 5 audits for real-time updates
+                stream: PowerSyncService().watchAudits(limit: 5),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const SliverToBoxAdapter(
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  final audits = snapshot.data ?? [];
+
+                  if (audits.isEmpty) {
+                    return SliverToBoxAdapter(
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(FontAwesomeIcons.clipboardList,
+                                size: 48, color: Colors.grey[400]),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Aucun audit pour le moment',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final audit = audits[index];
+                        final status = audit['status'] as String? ?? 'draft';
+                        final score = audit['score'] as int?;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _AuditCard(
+                            title: audit['title'] as String? ?? 'Sans titre',
+                            status: status,
+                            score: score,
+                            date: _formatDate(audit['updated_at'] as String?),
+                          )
+                              .animate()
+                              .fadeIn(
+                                  delay: Duration(
+                                      milliseconds: 600 + (100 * index)))
+                              .slideX(
+                                  begin: 0.1,
+                                  delay: Duration(
+                                      milliseconds: 600 + (100 * index))),
+                        );
+                      },
+                      childCount: audits.length,
+                    ),
+                  );
+                },
               ),
             ),
             const SliverToBoxAdapter(
@@ -271,11 +369,51 @@ class DashboardScreen extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {},
+        onPressed: () {
+          // Navigate to create audit screen
+          widget.onNavigateToPage?.call(const CreateAuditScreenPlaceholder());
+        },
         icon: const Icon(FontAwesomeIcons.plus),
         label: const Text('Nouvel audit'),
       ),
     );
+  }
+
+  /// Formats ISO date string to relative time in French.
+  String _formatDate(String? isoDate) {
+    if (isoDate == null || isoDate.isEmpty) return 'Date inconnue';
+
+    try {
+      final date = DateTime.parse(isoDate);
+      final now = DateTime.now();
+      final diff = now.difference(date);
+
+      if (diff.inDays == 0) {
+        if (diff.inHours == 0) {
+          return 'À l\'instant';
+        }
+        return 'Il y a ${diff.inHours}h';
+      } else if (diff.inDays == 1) {
+        return 'Hier';
+      } else if (diff.inDays < 7) {
+        return 'Il y a ${diff.inDays} jours';
+      } else {
+        return 'Il y a ${diff.inDays ~/ 7} sem.';
+      }
+    } catch (e) {
+      return 'Date inconnue';
+    }
+  }
+}
+
+/// Placeholder for CreateAuditScreen to avoid circular import
+class CreateAuditScreenPlaceholder extends StatelessWidget {
+  const CreateAuditScreenPlaceholder({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // This will be replaced by actual navigation
+    return const Scaffold(body: Center(child: Text('Create Audit')));
   }
 }
 
