@@ -4,6 +4,7 @@ import notificationRoutes from './notifications/notification.routes';
 import auditRoutes from './audits/audit.routes';
 import powerSyncRoutes from './powersync/powersync.routes';
 import organizationRoutes from './organizations/organization.routes';
+import authRoutes from './auth/auth.routes';
 import './config/env'; // Validate environment variables at startup
 
 const app = express();
@@ -18,6 +19,7 @@ app.get('/health', (_req, res) => {
 });
 
 // API Routes
+app.use('/auth', authRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/audits', auditRoutes);
 app.use('/powersync', powerSyncRoutes);
