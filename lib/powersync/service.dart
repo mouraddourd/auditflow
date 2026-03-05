@@ -8,7 +8,13 @@ import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import '../core/config/api_config.dart';
 
-/// Schéma SQLite local pour PowerSync
+/// Local SQLite schema for PowerSync.
+///
+/// This schema mirrors the PostgreSQL database structure and enables
+/// offline-first functionality. PowerSync automatically syncs changes
+/// between this local SQLite database and the remote PostgreSQL.
+///
+/// The schema must match the sync rules defined in powersync-sync-rules.yml
 class PowerSyncSchema {
   static final Schema schema = Schema([
     const Table('organizations', [
@@ -67,8 +73,25 @@ class PowerSyncSchema {
   ]);
 }
 
-/// Service PowerSync pour AuditFlow
-/// Gère la synchronisation temps réel entre SQLite local et PostgreSQL
+/// PowerSync service for AuditFlow.
+///
+/// Manages real-time synchronization between local SQLite and remote PostgreSQL.
+/// Implements the offline-first pattern:
+/// 1. All data is stored locally in SQLite for instant access
+/// 2. Changes are automatically synced to PostgreSQL when online
+/// 3. Conflicts are resolved server-side using last-write-wins
+///
+/// Usage:
+/// ```dart
+/// // Initialize on app startup (before runApp)
+/// await PowerSyncService().initialize();
+///
+/// // Connect after user login with their auth token
+/// await PowerSyncService().connect(userId: userId, authToken: token);
+///
+/// // Disconnect on logout
+/// await PowerSyncService().disconnect();
+/// ```
 class PowerSyncService {
   static final PowerSyncService _instance = PowerSyncService._internal();
   factory PowerSyncService() => _instance;
@@ -79,6 +102,9 @@ class PowerSyncService {
   String? _userId;
   String? _organizationId;
 
+  /// The initialized PowerSync database instance.
+  ///
+  /// Throws [StateError] if accessed before initialization.
   PowerSyncDatabase get db {
     if (_db == null) {
       throw StateError('PowerSync not initialized. Call initialize() first.');
@@ -86,18 +112,39 @@ class PowerSyncService {
     return _db!;
   }
 
+  /// Whether PowerSync has been successfully initialized.
   bool get isInitialized => _initialized;
+
+  /// Whether there's an active connection to the PowerSync server.
   bool get isConnected => _db?.currentStatus.connected ?? false;
+
+  /// The currently active organization ID for filtered queries.
   String? get organizationId => _organizationId;
 
-  /// Set the active organization for queries
+  /// Sets the active organization for subsequent queries.
+  ///
+  /// All queries will automatically filter by this organization ID
+  /// to ensure data isolation between organizations.
   void setOrganization(String? organizationId) {
     _organizationId = organizationId;
     debugPrint('🏢 Active organization set to: $organizationId');
   }
 
-  /// Initialise PowerSync avec le schéma local
+  /// Initializes PowerSync with the local SQLite schema.
+  ///
+  /// This must be called before any database operations.
+  /// Should be called in main() before runApp() to ensure
+  /// the database is ready when the app starts.
+  ///
+  /// The initialization process:
+  /// 1. Gets the platform-specific database path
+  /// 2. Creates the SQLite database with our schema
+  /// 3. Prepares the database for sync operations
+  ///
+  /// Throws an exception if initialization fails.
+  /// The caller should handle this and show an error screen.
   Future<void> initialize() async {
+    // Prevent double initialization
     if (_initialized) return;
 
     try {
@@ -111,22 +158,31 @@ class PowerSyncService {
       await _db!.initialize();
 
       _initialized = true;
-      debugPrint('✅ PowerSync initialized successfully');
+      debugPrint('✅ PowerSync initialized successfully at: $dbPath');
     } catch (e, stackTrace) {
       debugPrint('❌ PowerSync initialization failed: $e');
-      debugPrint(stackTrace.toString());
+      debugPrint('Stack trace: $stackTrace');
       rethrow;
     }
   }
 
-  /// Connecte au service PowerSync cloud
+  /// Connects to the PowerSync server for real-time sync.
+  ///
+  /// Must be called after [initialize] and after user login.
+  /// The auth token is used to authenticate the WebSocket connection
+  /// and authorize access to the user's data.
+  ///
+  /// Parameters:
+  /// - [userId]: The authenticated user's ID
+  /// - [authToken]: JWT token from the backend auth system
+  /// - [endpoint]: Optional custom PowerSync server URL
   Future<void> connect({
     required String userId,
     required String authToken,
     String? endpoint,
   }) async {
     if (!_initialized) {
-      throw StateError('PowerSync not initialized');
+      throw StateError('PowerSync not initialized. Call initialize() first.');
     }
 
     _userId = userId;
