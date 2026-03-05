@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import '../../powersync/service.dart';
+import '../config/api_config.dart';
 
 /// Organization model
 class Organization {
@@ -135,7 +136,7 @@ class OrganizationProvider extends ChangeNotifier {
       _dio.options.headers['x-user-id'] = userId;
       _dio.options.headers['Authorization'] = 'Bearer $token';
 
-      final response = await _dio.get('http://localhost:3000/organizations');
+      final response = await _dio.get(ApiConfig.organizations);
 
       if (response.data['success'] == true) {
         final List<dynamic> orgsData = response.data['data'] ?? [];
@@ -185,7 +186,7 @@ class OrganizationProvider extends ChangeNotifier {
       _dio.options.headers['Authorization'] = 'Bearer $token';
 
       final response = await _dio.post(
-        'http://localhost:3000/organizations',
+        ApiConfig.organizations,
         data: {'name': name},
       );
 
@@ -225,7 +226,7 @@ class OrganizationProvider extends ChangeNotifier {
       _dio.options.headers['Authorization'] = 'Bearer $authToken';
 
       final response = await _dio.post(
-        'http://localhost:3000/organizations/join/$token',
+        '${ApiConfig.organizations}/join/$token',
       );
 
       if (response.data['success'] == true) {
@@ -273,7 +274,7 @@ class OrganizationProvider extends ChangeNotifier {
       _dio.options.headers['Authorization'] = 'Bearer $token';
 
       final response = await _dio.post(
-        'http://localhost:3000/organizations/${_activeOrganization!.id}/invite',
+        '${ApiConfig.organizations}/${_activeOrganization!.id}/invite',
         data: {'email': email},
       );
 

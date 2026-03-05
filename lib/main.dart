@@ -6,6 +6,8 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'core/widgets/theme_toggle_button.dart';
 import 'core/providers/organization_provider.dart';
+import 'services/auth_service.dart';
+import 'powersync/service.dart';
 import 'screens/landing/landing_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/organization/organization_onboarding_screen.dart';
@@ -18,7 +20,12 @@ import 'screens/templates/create_template_screen.dart';
 import 'screens/results/results_screen.dart';
 import 'screens/settings/settings_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize PowerSync
+  await PowerSyncService().initialize();
+
   runApp(const AuditFlowApp());
 }
 
@@ -67,10 +74,41 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _isLoggedIn = false;
+  bool _isCheckingAuth = true;
   String? _userId;
   String? _token;
 
-  void _login(String userId, String token) {
+  final _authService = AuthService();
+  final _powerSyncService = PowerSyncService();
+
+  @override
+  void initState() {
+    super.initState();
+    _checkExistingAuth();
+  }
+
+  /// Check if user is already authenticated on app start
+  Future<void> _checkExistingAuth() async {
+    final isAuthenticated = await _authService.isAuthenticated();
+    if (isAuthenticated) {
+      final userId = await _authService.getUserId();
+      final token = await _authService.getToken();
+      if (userId != null && token != null) {
+        await _powerSyncService.connect(userId: userId, authToken: token);
+        setState(() {
+          _isLoggedIn = true;
+          _userId = userId;
+          _token = token;
+        });
+      }
+    }
+    setState(() => _isCheckingAuth = false);
+  }
+
+  void _login(String userId, String token) async {
+    // Connect PowerSync with the token
+    await _powerSyncService.connect(userId: userId, authToken: token);
+
     setState(() {
       _isLoggedIn = true;
       _userId = userId;
@@ -78,9 +116,16 @@ class _AuthWrapperState extends State<AuthWrapper> {
     });
   }
 
-  void _logout() {
+  void _logout() async {
+    // Logout from AuthService (clears stored token)
+    await _authService.logout();
+
+    // Disconnect PowerSync
+    await _powerSyncService.disconnect();
+
     final orgProvider = context.read<OrganizationProvider>();
     orgProvider.clear();
+
     setState(() {
       _isLoggedIn = false;
       _userId = null;
@@ -90,6 +135,17 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   @override
   Widget build(BuildContext context) {
+    // Show loading while checking existing auth
+    if (_isCheckingAuth) {
+      return const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      );
+    }
+
     if (!_isLoggedIn) {
       return LoginScreen(onLogin: _login);
     }
