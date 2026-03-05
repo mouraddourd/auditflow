@@ -1,65 +1,166 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../core/theme/theme_provider.dart';
+import '../../powersync/service.dart';
 
+/// Create audit screen with real data from PowerSync.
+///
+/// Two-step flow:
+/// 1. Select a template from organization's templates
+/// 2. Fill audit details (title, description, assignee)
+///
+/// On submit, creates audit locally in SQLite which syncs to backend.
 class CreateAuditScreen extends StatefulWidget {
-  const CreateAuditScreen({super.key});
+  final Function(Widget)? onNavigateToPage;
+  const CreateAuditScreen({super.key, this.onNavigateToPage});
 
   @override
   State<CreateAuditScreen> createState() => _CreateAuditScreenState();
 }
 
 class _CreateAuditScreenState extends State<CreateAuditScreen> {
-  String? _selectedTemplate;
-  final _titleController = TextEditingController();
-  final _locationController = TextEditingController();
-  final _notesController = TextEditingController();
+  /// Selected template ID (null = step 1, otherwise step 2)
+  String? _selectedTemplateId;
 
-  final List<Map<String, dynamic>> _templates = [
-    {
-      'id': '1',
-      'title': 'Audit Qualité ISO 9001',
-      'category': 'Qualité',
-      'questions': 25,
-      'icon': FontAwesomeIcons.circleCheck
-    },
-    {
-      'id': '2',
-      'title': 'Inspection Sécurité',
-      'category': 'Sécurité',
-      'questions': 18,
-      'icon': FontAwesomeIcons.shieldHalved
-    },
-    {
-      'id': '3',
-      'title': 'Audit Environnement',
-      'category': 'Environnement',
-      'questions': 15,
-      'icon': FontAwesomeIcons.leaf
-    },
-    {
-      'id': '4',
-      'title': 'Contrôle Hygiène',
-      'category': 'Hygiène',
-      'questions': 20,
-      'icon': FontAwesomeIcons.handSparkles
-    },
-    {
-      'id': '5',
-      'title': 'Audit Technique',
-      'category': 'Technique',
-      'questions': 30,
-      'icon': FontAwesomeIcons.wrench
-    },
-    {
-      'id': '6',
-      'title': 'Conformité RGPD',
-      'category': 'Conformité',
-      'questions': 22,
-      'icon': FontAwesomeIcons.scaleBalanced
-    },
-  ];
+  /// Selected template data (cached for display in step 2)
+  Map<String, dynamic>? _selectedTemplate;
+
+  /// Form controllers
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+
+  /// Selected assignee user ID
+  String? _selectedAssigneeId;
+
+  /// Templates loaded from PowerSync
+  List<Map<String, dynamic>> _templates = [];
+
+  /// Organization members for assignee dropdown
+  List<Map<String, dynamic>> _members = [];
+
+  /// Loading states
+  bool _isLoadingTemplates = true;
+  bool _isLoadingMembers = false;
+  bool _isCreating = false;
+
+  /// Form validation error
+  String? _validationError;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTemplates();
+  }
+
+  /// Loads templates from PowerSync on screen init.
+  Future<void> _loadTemplates() async {
+    setState(() => _isLoadingTemplates = true);
+
+    try {
+      final templates = await PowerSyncService().getTemplates();
+      setState(() {
+        _templates = templates;
+        _isLoadingTemplates = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading templates: $e');
+      setState(() => _isLoadingTemplates = false);
+    }
+  }
+
+  /// Loads organization members when entering step 2.
+  Future<void> _loadMembers() async {
+    if (_members.isNotEmpty) return;
+
+    setState(() => _isLoadingMembers = true);
+
+    try {
+      final members = await PowerSyncService().getOrganizationMembers();
+      setState(() {
+        _members = members;
+        _isLoadingMembers = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading members: $e');
+      setState(() => _isLoadingMembers = false);
+    }
+  }
+
+  /// Creates the audit in PowerSync and navigates back.
+  Future<void> _createAudit() async {
+    if (_selectedTemplateId == null) {
+      setState(() => _validationError = 'Veuillez sélectionner un template');
+      return;
+    }
+    if (_titleController.text.trim().isEmpty) {
+      setState(() => _validationError = 'Le titre est obligatoire');
+      return;
+    }
+
+    setState(() {
+      _isCreating = true;
+      _validationError = null;
+    });
+
+    try {
+      await PowerSyncService().createAudit(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim().isNotEmpty
+            ? _descriptionController.text.trim()
+            : null,
+        templateId: _selectedTemplateId!,
+      );
+
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      debugPrint('Error creating audit: $e');
+      setState(() {
+        _isCreating = false;
+        _validationError = 'Erreur lors de la création: $e';
+      });
+    }
+  }
+
+  /// Returns an icon based on template category.
+  IconData _getCategoryIcon(String? category) {
+    switch (category?.toLowerCase()) {
+      case 'qualité':
+      case 'quality':
+        return FontAwesomeIcons.circleCheck;
+      case 'sécurité':
+      case 'security':
+        return FontAwesomeIcons.shieldHalved;
+      case 'environnement':
+      case 'environment':
+        return FontAwesomeIcons.leaf;
+      case 'hygiène':
+      case 'hygiene':
+        return FontAwesomeIcons.handSparkles;
+      case 'technique':
+      case 'technical':
+        return FontAwesomeIcons.wrench;
+      case 'conformité':
+      case 'compliance':
+        return FontAwesomeIcons.scaleBalanced;
+      default:
+        return FontAwesomeIcons.clipboardList;
+    }
+  }
+
+  /// Handles template selection - moves to step 2
+  void _selectTemplate(Map<String, dynamic> template) {
+    setState(() {
+      _selectedTemplateId = template['id'] as String?;
+      _selectedTemplate = template;
+    });
+    _loadMembers();
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,8 +185,8 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
                 _StepIndicator(
                   step: 1,
                   label: 'Template',
-                  isActive: _selectedTemplate == null,
-                  isComplete: _selectedTemplate != null,
+                  isActive: _selectedTemplateId == null,
+                  isComplete: _selectedTemplateId != null,
                 ),
                 Expanded(
                     child: Divider(
@@ -93,14 +194,15 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
                 _StepIndicator(
                   step: 2,
                   label: 'Détails',
-                  isActive: _selectedTemplate != null,
+                  isActive: _selectedTemplateId != null,
                   isComplete: false,
                 ),
               ],
             ),
             const SizedBox(height: 32),
-            if (_selectedTemplate == null) ...[
-              // Template selection
+
+            // Step 1: Template selection
+            if (_selectedTemplateId == null) ...[
               Text(
                 'Choisir un template',
                 style: theme.textTheme.titleLarge?.copyWith(
@@ -115,46 +217,101 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth > 800 ? 3 : 2;
-                  return GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 1.5,
-                    ),
-                    itemCount: _templates.length,
-                    itemBuilder: (context, index) {
-                      final template = _templates[index];
-                      return _TemplateSelectionCard(
-                        title: template['title'] as String,
-                        category: template['category'] as String,
-                        questions: template['questions'] as int,
-                        icon: template['icon'] as IconData,
-                        onTap: () => setState(
-                            () => _selectedTemplate = template['id'] as String),
-                      );
-                    },
-                  );
-                },
-              ),
-            ] else ...[
-              // Details form
+
+              // Loading state
+              if (_isLoadingTemplates)
+                const Center(child: CircularProgressIndicator())
+              // Empty state
+              else if (_templates.isEmpty)
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(FontAwesomeIcons.folderOpen,
+                          size: 48, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Aucun template disponible',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              // Template grid
+              else
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final crossAxisCount = constraints.maxWidth > 800 ? 3 : 2;
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: 1.5,
+                      ),
+                      itemCount: _templates.length,
+                      itemBuilder: (context, index) {
+                        final template = _templates[index];
+                        return _TemplateSelectionCard(
+                          title: template['title'] as String? ?? 'Sans titre',
+                          category: template['category'] as String? ?? 'Audit',
+                          questions: (template['question_count'] as int?) ?? 0,
+                          icon:
+                              _getCategoryIcon(template['category'] as String?),
+                          onTap: () => _selectTemplate(template),
+                        );
+                      },
+                    );
+                  },
+                ),
+            ],
+
+            // Step 2: Details form
+            if (_selectedTemplateId != null) ...[
               Text(
                 'Détails de l\'audit',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              const SizedBox(height: 8),
+              // Show selected template info
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                        _getCategoryIcon(
+                            _selectedTemplate?['category'] as String?),
+                        color: theme.colorScheme.primary,
+                        size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _selectedTemplate?['title'] as String? ?? 'Template',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 24),
+
+              // Title field (required)
               TextField(
                 controller: _titleController,
                 decoration: InputDecoration(
-                  labelText: 'Titre de l\'audit',
+                  labelText: 'Titre de l\'audit *',
                   hintText: 'Ex: Audit Q1 2025',
                   prefixIcon: const Icon(FontAwesomeIcons.heading),
                   filled: true,
@@ -166,81 +323,15 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Description field (optional)
               TextField(
-                controller: _locationController,
-                decoration: InputDecoration(
-                  labelText: 'Lieu / Site',
-                  hintText: 'Ex: Usine Lyon',
-                  prefixIcon: const Icon(FontAwesomeIcons.locationDot),
-                  filled: true,
-                  fillColor: theme.cardTheme.color,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: 'Assigné à',
-                  prefixIcon: const Icon(FontAwesomeIcons.user),
-                  filled: true,
-                  fillColor: theme.cardTheme.color,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                items: const [
-                  DropdownMenuItem(value: '1', child: Text('Jean Dupont')),
-                  DropdownMenuItem(value: '2', child: Text('Marie Martin')),
-                  DropdownMenuItem(value: '3', child: Text('Pierre Durand')),
-                ],
-                onChanged: (value) {},
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      decoration: InputDecoration(
-                        labelText: 'Date début',
-                        prefixIcon: const Icon(FontAwesomeIcons.calendarDays),
-                        filled: true,
-                        fillColor: theme.cardTheme.color,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextField(
-                      decoration: InputDecoration(
-                        labelText: 'Date fin (optionnel)',
-                        prefixIcon: const Icon(FontAwesomeIcons.calendarDays),
-                        filled: true,
-                        fillColor: theme.cardTheme.color,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _notesController,
+                controller: _descriptionController,
                 maxLines: 3,
                 decoration: InputDecoration(
-                  labelText: 'Notes (optionnel)',
-                  hintText: 'Instructions ou contexte particulier...',
-                  prefixIcon: const Icon(FontAwesomeIcons.noteSticky),
+                  labelText: 'Description (optionnel)',
+                  hintText: 'Contexte, objectifs...',
+                  prefixIcon: const Icon(FontAwesomeIcons.alignLeft),
                   filled: true,
                   fillColor: theme.cardTheme.color,
                   border: OutlineInputBorder(
@@ -249,12 +340,72 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+
+              // Assignee dropdown
+              if (_isLoadingMembers)
+                const Center(child: CircularProgressIndicator())
+              else
+                DropdownButtonFormField<String>(
+                  decoration: InputDecoration(
+                    labelText: 'Assigné à (optionnel)',
+                    prefixIcon: const Icon(FontAwesomeIcons.user),
+                    filled: true,
+                    fillColor: theme.cardTheme.color,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  value: _selectedAssigneeId,
+                  items: _members.map((member) {
+                    return DropdownMenuItem(
+                      value: member['user_id'] as String?,
+                      child: Text(member['role'] as String? ?? 'Membre'),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() => _selectedAssigneeId = value);
+                  },
+                ),
+
+              // Validation error
+              if (_validationError != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(FontAwesomeIcons.circleExclamation,
+                          color: Colors.red, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _validationError!,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               const SizedBox(height: 32),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => setState(() => _selectedTemplate = null),
+                      onPressed: _isCreating
+                          ? null
+                          : () => setState(() {
+                                _selectedTemplateId = null;
+                                _selectedTemplate = null;
+                                _validationError = null;
+                              }),
                       child: const Text('Retour'),
                     ),
                   ),
@@ -262,8 +413,15 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
-                      onPressed: () {},
-                      child: const Text('Créer l\'audit'),
+                      onPressed: _isCreating ? null : _createAudit,
+                      child: _isCreating
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text('Créer l\'audit'),
                     ),
                   ),
                 ],

@@ -482,6 +482,21 @@ class PowerSyncService {
     );
   }
 
+  /// Récupère les membres de l'organisation courante.
+  ///
+  /// Retourne une liste de membres avec leurs infos utilisateur
+  /// pour le dropdown d'assignation dans la création d'audit.
+  Future<List<Map<String, dynamic>>> getOrganizationMembers() async {
+    if (_organizationId == null) return [];
+
+    return await db.getAll('''
+      SELECT om.user_id, om.role, om.joined_at
+      FROM organization_members om
+      WHERE om.organization_id = ?
+      ORDER BY om.role DESC, om.joined_at ASC
+    ''', [_organizationId]);
+  }
+
   /// Force une synchronisation manuelle
   /// Note: PowerSync synchronise automatiquement quand connecté.
   /// Cette méthode est conservée pour compatibilité mais n'a pas d'effet.
