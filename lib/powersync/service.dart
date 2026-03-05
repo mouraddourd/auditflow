@@ -61,7 +61,6 @@ class PowerSyncService {
   PowerSyncDatabase? _db;
   bool _initialized = false;
   String? _userId;
-  String? _authToken;
 
   PowerSyncDatabase get db {
     if (_db == null) {
@@ -107,7 +106,6 @@ class PowerSyncService {
     }
 
     _userId = userId;
-    _authToken = authToken;
 
     try {
       // Endpoint Docker local - ws:// pour WebSocket
@@ -396,10 +394,12 @@ class PowerSyncService {
   }
 
   /// Force une synchronisation manuelle
+  /// Note: PowerSync synchronise automatiquement quand connecté.
+  /// Cette méthode est conservée pour compatibilité mais n'a pas d'effet.
   Future<void> sync() async {
-    if (_db != null) {
-      await _db!.sync();
-    }
+    // PowerSync syncs automatically when connected
+    // To force a full resync, use disconnect() then connect()
+    debugPrint('PowerSync sync is automatic when connected');
   }
 
   /// Retourne le chemin de la base de données SQLite
@@ -429,13 +429,13 @@ class _AuditFlowConnector extends PowerSyncBackendConnector {
   @override
   Future<void> uploadData(PowerSyncDatabase database) async {
     // Récupérer les changements en attente
-    final transaction = await database.getNextCrudTransaction();
-    if (transaction == null) {
+    final batch = await database.getCrudBatch();
+    if (batch == null) {
       return; // Rien à uploader
     }
 
     try {
-      final changes = transaction.crud.map((crud) {
+      final changes = batch.crud.map((crud) {
         final op = crud.op;
         final opName = _getOperationName(op);
 
@@ -443,7 +443,7 @@ class _AuditFlowConnector extends PowerSyncBackendConnector {
           'op': opName,
           'table': crud.table,
           'id': crud.id,
-          'data': op == UpdateType.delete ? null : crud.data,
+          'data': op == UpdateType.delete ? null : crud.opData,
         };
       }).toList();
 
@@ -464,15 +464,17 @@ class _AuditFlowConnector extends PowerSyncBackendConnector {
 
       if (response.statusCode == 200 && responseData['success'] == true) {
         // Marquer comme uploadé
-        await transaction.complete();
+        await batch.complete();
         debugPrint('✅ Upload successful: ${changes.length} changes');
       } else {
-        // Erreurs côté serveur
+        // Erreurs côté serveur - ne pas compléter le batch pour permettre un retry
         final errors = responseData['errors'] as List?;
         if (errors != null && errors.isNotEmpty) {
           debugPrint('⚠️ Upload errors: $errors');
         }
-        await transaction.complete();
+        debugPrint(
+            '❌ Upload failed with status ${response.statusCode}, will retry later');
+        return;
       }
     } catch (error) {
       debugPrint('❌ Upload failed: $error');

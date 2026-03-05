@@ -37,6 +37,7 @@ dependencies:
   equatable: ^2.0.5
   # HTTP & API
   dio: ^5.4.3+1
+  http: ^1.2.0
   # Storage
   shared_preferences: ^2.2.3
   # PowerSync - Sync temps réel PostgreSQL↔SQLite
