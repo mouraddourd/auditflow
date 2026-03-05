@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../core/widgets/theme_toggle_button.dart';
+import '../../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   final void Function(String userId, String token)? onLogin;
@@ -16,6 +17,59 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _isLogin = true;
   bool _obscurePassword = true;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _authService = AuthService();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final name = _nameController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _errorMessage = 'Veuillez remplir tous les champs');
+      return;
+    }
+
+    if (!_isLogin && name.isEmpty) {
+      setState(() => _errorMessage = 'Veuillez entrer votre nom');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final result = _isLogin
+          ? await _authService.login(email: email, password: password)
+          : await _authService.register(
+              email: email, password: password, name: name);
+
+      if (result.success && result.user != null && result.token != null) {
+        widget.onLogin?.call(result.user!.id, result.token!);
+      } else {
+        setState(() => _errorMessage = result.error ?? 'Erreur inconnue');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -159,9 +213,34 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                         const SizedBox(height: 32),
+                        // Error message
+                        if (_errorMessage != null) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(FontAwesomeIcons.circleExclamation,
+                                    color: Colors.red, size: 16),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: const TextStyle(color: Colors.red),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
                         // Form
                         if (!_isLogin) ...[
                           TextField(
+                            controller: _nameController,
                             decoration: InputDecoration(
                               labelText: 'Nom complet',
                               prefixIcon: const Icon(FontAwesomeIcons.user),
@@ -178,6 +257,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 16),
                         ],
                         TextField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
                             labelText: 'Email',
                             prefixIcon: const Icon(FontAwesomeIcons.envelope),
@@ -193,6 +274,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 16),
                         TextField(
+                          controller: _passwordController,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
                             labelText: 'Mot de passe',
@@ -223,11 +305,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () {
-                              // Demo login - accept any credentials
-                              widget.onLogin
-                                  ?.call('demo-user-id', 'demo-token');
-                            },
+                            onPressed: _isLoading ? null : _submit,
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               backgroundColor: theme.colorScheme.primary,
@@ -236,32 +314,22 @@ class _LoginScreenState extends State<LoginScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: Text(
-                              _isLogin ? 'Se connecter' : 'S\'inscrire',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        // Demo quick login
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              widget.onLogin
-                                  ?.call('demo-user-id', 'demo-token');
-                            },
-                            icon: const Icon(FontAwesomeIcons.bolt),
-                            label: const Text('Connexion rapide (Demo)'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              side: BorderSide(
-                                  color: theme.colorScheme.secondary),
-                              foregroundColor: theme.colorScheme.secondary,
-                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    _isLogin ? 'Se connecter' : 'S\'inscrire',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                           ),
                         ),
                         const SizedBox(height: 24),

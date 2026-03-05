@@ -6,6 +6,7 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
+import '../core/config/api_config.dart';
 
 /// Schéma SQLite local pour PowerSync
 class PowerSyncSchema {
@@ -131,11 +132,8 @@ class PowerSyncService {
     _userId = userId;
 
     try {
-      // Endpoint Docker local - ws:// pour WebSocket
-      // Pour Android emulator: ws://10.0.2.2:8080
-      // Pour iOS simulator: ws://localhost:8080
-      // Pour device physique: ws://VOTRE_IP:8080
-      final powerSyncEndpoint = endpoint ?? 'ws://localhost:8080';
+      // Use centralized config
+      final powerSyncEndpoint = endpoint ?? ApiConfig.powerSyncUrl;
 
       final connector = _AuditFlowConnector(
         endpoint: powerSyncEndpoint,
@@ -484,7 +482,7 @@ class _AuditFlowConnector extends PowerSyncBackendConnector {
 
       // Appeler l'API backend avec http
       final response = await http.post(
-        Uri.parse('http://localhost:3000/powersync/upload'),
+        Uri.parse(ApiConfig.powerSyncUpload),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
