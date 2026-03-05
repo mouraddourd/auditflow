@@ -15,6 +15,7 @@ const createAuditSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
   templateId: z.string().min(1),
+  organizationId: z.string().min(1),
 });
 
 const updateStatusSchema = z.object({
@@ -115,7 +116,10 @@ router.post('/', async (req: Request, res: Response) => {
     const body = createAuditSchema.parse(req.body);
     
     const audit = await createAudit({
-      ...body,
+      title: body.title,
+      description: body.description,
+      templateId: body.templateId,
+      organizationId: body.organizationId,
       userId,
     });
 

@@ -6,7 +6,7 @@ import '../../core/theme/theme_provider.dart';
 import '../../core/widgets/theme_toggle_button.dart';
 
 class LoginScreen extends StatefulWidget {
-  final VoidCallback? onLogin;
+  final void Function(String userId, String token)? onLogin;
   const LoginScreen({super.key, this.onLogin});
 
   @override
@@ -225,7 +225,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: ElevatedButton(
                             onPressed: () {
                               // Demo login - accept any credentials
-                              widget.onLogin?.call();
+                              widget.onLogin
+                                  ?.call('demo-user-id', 'demo-token');
                             },
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -250,7 +251,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           width: double.infinity,
                           child: OutlinedButton.icon(
                             onPressed: () {
-                              widget.onLogin?.call();
+                              widget.onLogin
+                                  ?.call('demo-user-id', 'demo-token');
                             },
                             icon: const Icon(FontAwesomeIcons.bolt),
                             label: const Text('Connexion rapide (Demo)'),

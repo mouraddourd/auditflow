@@ -3,6 +3,7 @@ import cors from 'cors';
 import notificationRoutes from './notifications/notification.routes';
 import auditRoutes from './audits/audit.routes';
 import powerSyncRoutes from './powersync/powersync.routes';
+import organizationRoutes from './organizations/organization.routes';
 import './config/env'; // Validate environment variables at startup
 
 const app = express();
@@ -20,6 +21,7 @@ app.get('/health', (_req, res) => {
 app.use('/notifications', notificationRoutes);
 app.use('/audits', auditRoutes);
 app.use('/powersync', powerSyncRoutes);
+app.use('/organizations', organizationRoutes);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

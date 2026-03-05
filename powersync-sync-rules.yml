@@ -12,25 +12,46 @@ bucket_definitions:
         JOIN templates t ON q.template_id = t.id
         WHERE t.is_public = true
 
-  # Données utilisateur privées
-  user_data:
+  # Données de l'organisation
+  organization_data:
     parameters: user_id
     data:
-      # Templates de l'utilisateur
-      - SELECT * FROM templates WHERE user_id = bucket.user_id
-      
-      # Questions des templates de l'utilisateur
+      # Organisations dont l'utilisateur est membre
+      - SELECT o.* FROM organizations o
+        JOIN organization_members om ON o.id = om.organization_id
+        WHERE om.user_id = bucket.user_id
+
+      # Membres des organisations de l'utilisateur
+      - SELECT om.* FROM organization_members om
+        WHERE om.organization_id IN (
+          SELECT organization_id FROM organization_members WHERE user_id = bucket.user_id
+        )
+
+      # Templates des organisations de l'utilisateur
+      - SELECT t.* FROM templates t
+        WHERE t.organization_id IN (
+          SELECT organization_id FROM organization_members WHERE user_id = bucket.user_id
+        )
+
+      # Questions des templates des organisations
       - SELECT q.* FROM questions q
         JOIN templates t ON q.template_id = t.id
-        WHERE t.user_id = bucket.user_id
-      
-      # Audits de l'utilisateur
-      - SELECT * FROM audits WHERE user_id = bucket.user_id
-      
-      # Réponses des audits de l'utilisateur
-      - SELECT a.* FROM answers a
-        JOIN audits au ON a.audit_id = au.id
-        WHERE au.user_id = bucket.user_id
+        WHERE t.organization_id IN (
+          SELECT organization_id FROM organization_members WHERE user_id = bucket.user_id
+        )
+
+      # Audits des organisations de l'utilisateur
+      - SELECT a.* FROM audits a
+        WHERE a.organization_id IN (
+          SELECT organization_id FROM organization_members WHERE user_id = bucket.user_id
+        )
+
+      # Réponses des audits des organisations
+      - SELECT ans.* FROM answers ans
+        JOIN audits au ON ans.audit_id = au.id
+        WHERE au.organization_id IN (
+          SELECT organization_id FROM organization_members WHERE user_id = bucket.user_id
+        )
 
 # Paramètres globaux
 # (token expiration, etc.)

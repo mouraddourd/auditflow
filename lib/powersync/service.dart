@@ -10,11 +10,25 @@ import 'package:uuid/uuid.dart';
 /// Schéma SQLite local pour PowerSync
 class PowerSyncSchema {
   static final Schema schema = Schema([
+    const Table('organizations', [
+      Column.text('name'),
+      Column.text('slug'),
+      Column.text('license_tier'),
+      Column.text('created_at'),
+      Column.text('updated_at'),
+    ]),
+    const Table('organization_members', [
+      Column.text('user_id'),
+      Column.text('organization_id'),
+      Column.text('role'),
+      Column.text('joined_at'),
+    ]),
     const Table('templates', [
       Column.text('name'),
       Column.text('description'),
       Column.text('category'),
       Column.text('user_id'),
+      Column.text('organization_id'),
       Column.integer('is_public'),
       Column.text('created_at'),
       Column.text('updated_at'),
@@ -34,6 +48,7 @@ class PowerSyncSchema {
       Column.integer('score'),
       Column.text('template_id'),
       Column.text('user_id'),
+      Column.text('organization_id'),
       Column.text('started_at'),
       Column.text('completed_at'),
       Column.text('created_at'),
@@ -61,6 +76,7 @@ class PowerSyncService {
   PowerSyncDatabase? _db;
   bool _initialized = false;
   String? _userId;
+  String? _organizationId;
 
   PowerSyncDatabase get db {
     if (_db == null) {
@@ -71,6 +87,13 @@ class PowerSyncService {
 
   bool get isInitialized => _initialized;
   bool get isConnected => _db?.currentStatus.connected ?? false;
+  String? get organizationId => _organizationId;
+
+  /// Set the active organization for queries
+  void setOrganization(String? organizationId) {
+    _organizationId = organizationId;
+    debugPrint('🏢 Active organization set to: $organizationId');
+  }
 
   /// Initialise PowerSync avec le schéma local
   Future<void> initialize() async {
@@ -138,17 +161,17 @@ class PowerSyncService {
     }
   }
 
-  /// Récupère tous les audits d'un utilisateur
+  /// Récupère tous les audits d'une organisation
   Future<List<Map<String, dynamic>>> getAudits({
     String? status,
     String? search,
     int limit = 20,
     int offset = 0,
   }) async {
-    if (_userId == null) return [];
+    if (_organizationId == null) return [];
 
-    var sql = 'SELECT * FROM audits WHERE user_id = ?';
-    var params = [_userId];
+    var sql = 'SELECT * FROM audits WHERE organization_id = ?';
+    var params = <Object?>[_organizationId];
 
     if (status != null) {
       sql += ' AND status = ?';
@@ -168,17 +191,17 @@ class PowerSyncService {
     return await db.getAll(sql, params);
   }
 
-  /// Stream réactif des audits
+  /// Stream réactif des audits (organisation)
   Stream<List<Map<String, dynamic>>> watchAudits({
     String? status,
     String? search,
     int limit = 20,
     int offset = 0,
   }) {
-    if (_userId == null) return Stream.value([]);
+    if (_organizationId == null) return Stream.value([]);
 
-    var sql = 'SELECT * FROM audits WHERE user_id = ?';
-    var params = <Object?>[_userId];
+    var sql = 'SELECT * FROM audits WHERE organization_id = ?';
+    var params = <Object?>[_organizationId];
 
     if (status != null) {
       sql += ' AND status = ?';
@@ -200,11 +223,11 @@ class PowerSyncService {
 
   /// Récupère un audit par ID avec ses relations
   Future<Map<String, dynamic>?> getAuditById(String auditId) async {
-    if (_userId == null) return null;
+    if (_organizationId == null) return null;
 
     final audits = await db.getAll(
-      'SELECT * FROM audits WHERE id = ? AND user_id = ?',
-      [auditId, _userId],
+      'SELECT * FROM audits WHERE id = ? AND organization_id = ?',
+      [auditId, _organizationId],
     );
 
     if (audits.isEmpty) return null;
@@ -228,14 +251,25 @@ class PowerSyncService {
     required String templateId,
   }) async {
     if (_userId == null) throw StateError('User not authenticated');
+    if (_organizationId == null) throw StateError('No organization selected');
 
     final id = _generateId();
     final now = DateTime.now().toIso8601String();
 
     await db.execute('''
-      INSERT INTO audits (id, title, description, template_id, user_id, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', [id, title, description, templateId, _userId, 'draft', now, now]);
+      INSERT INTO audits (id, title, description, template_id, user_id, organization_id, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', [
+      id,
+      title,
+      description,
+      templateId,
+      _userId,
+      _organizationId,
+      'draft',
+      now,
+      now
+    ]);
 
     return {
       'id': id,
@@ -243,6 +277,7 @@ class PowerSyncService {
       'description': description,
       'template_id': templateId,
       'user_id': _userId,
+      'organization_id': _organizationId,
       'status': 'draft',
       'created_at': now,
       'updated_at': now,
@@ -316,18 +351,18 @@ class PowerSyncService {
     }
   }
 
-  /// Récupère les templates disponibles
+  /// Récupère les templates disponibles (organisation + publics)
   Future<List<Map<String, dynamic>>> getTemplates() async {
-    if (_userId == null) return [];
+    if (_organizationId == null) return [];
 
     return await db.getAll('''
       SELECT t.*, COUNT(q.id) as question_count
       FROM templates t
       LEFT JOIN questions q ON q.template_id = t.id
-      WHERE t.user_id = ? OR t.is_public = 1
+      WHERE t.organization_id = ? OR t.is_public = 1
       GROUP BY t.id
       ORDER BY t.updated_at DESC
-    ''', [_userId]);
+    ''', [_organizationId]);
   }
 
   /// Récupère un template avec ses questions
@@ -350,9 +385,9 @@ class PowerSyncService {
     return template;
   }
 
-  /// Récupère les statistiques des audits
+  /// Récupère les statistiques des audits (organisation)
   Future<Map<String, dynamic>> getAuditStats() async {
-    if (_userId == null) {
+    if (_organizationId == null) {
       return {
         'total': 0,
         'completed': 0,
@@ -370,8 +405,8 @@ class PowerSyncService {
         SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as draft,
         AVG(CASE WHEN status = 'completed' AND score IS NOT NULL THEN score END) as avg_score
       FROM audits 
-      WHERE user_id = ?
-    ''', [_userId]);
+      WHERE organization_id = ?
+    ''', [_organizationId]);
 
     final stats = results.first;
     return {

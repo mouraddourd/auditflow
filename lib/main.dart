@@ -5,8 +5,10 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'core/widgets/theme_toggle_button.dart';
+import 'core/providers/organization_provider.dart';
 import 'screens/landing/landing_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/organization/organization_onboarding_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 import 'screens/audits/audits_list_screen.dart';
 import 'screens/audits/create_audit_screen.dart';
@@ -25,8 +27,11 @@ class AuditFlowApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => OrganizationProvider()),
+      ],
       child: Builder(
         builder: (context) {
           final themeProvider = context.watch<ThemeProvider>();
@@ -62,13 +67,25 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _isLoggedIn = false;
+  String? _userId;
+  String? _token;
 
-  void _login() {
-    setState(() => _isLoggedIn = true);
+  void _login(String userId, String token) {
+    setState(() {
+      _isLoggedIn = true;
+      _userId = userId;
+      _token = token;
+    });
   }
 
   void _logout() {
-    setState(() => _isLoggedIn = false);
+    final orgProvider = context.read<OrganizationProvider>();
+    orgProvider.clear();
+    setState(() {
+      _isLoggedIn = false;
+      _userId = null;
+      _token = null;
+    });
   }
 
   @override
@@ -76,7 +93,89 @@ class _AuthWrapperState extends State<AuthWrapper> {
     if (!_isLoggedIn) {
       return LoginScreen(onLogin: _login);
     }
-    return MainScreen(onLogout: _logout);
+    return OrganizationCheckWrapper(
+      userId: _userId!,
+      token: _token!,
+      onLogout: _logout,
+    );
+  }
+}
+
+/// Checks if user has an organization, shows onboarding if not
+class OrganizationCheckWrapper extends StatefulWidget {
+  final String userId;
+  final String token;
+  final VoidCallback onLogout;
+
+  const OrganizationCheckWrapper({
+    super.key,
+    required this.userId,
+    required this.token,
+    required this.onLogout,
+  });
+
+  @override
+  State<OrganizationCheckWrapper> createState() =>
+      _OrganizationCheckWrapperState();
+}
+
+class _OrganizationCheckWrapperState extends State<OrganizationCheckWrapper> {
+  bool _isInitializing = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeOrganizations();
+  }
+
+  Future<void> _initializeOrganizations() async {
+    final orgProvider = context.read<OrganizationProvider>();
+    await orgProvider.initialize(widget.userId, widget.token);
+    setState(() => _isInitializing = false);
+  }
+
+  void _onOrgComplete() {
+    setState(() => _isInitializing = true);
+    _initializeOrganizations();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isInitializing) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                'Chargement...',
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[400]
+                      : Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final orgProvider = context.watch<OrganizationProvider>();
+
+    // No organization -> show onboarding
+    if (!orgProvider.hasOrganization) {
+      return OrganizationOnboardingScreen(
+        userId: widget.userId,
+        token: widget.token,
+        onComplete: _onOrgComplete,
+      );
+    }
+
+    // Has organization -> show main app
+    return MainScreen(onLogout: widget.onLogout);
   }
 }
 

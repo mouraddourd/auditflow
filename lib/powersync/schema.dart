@@ -4,6 +4,25 @@ import 'package:powersync/powersync.dart';
 /// Synchronisé avec PostgreSQL via PowerSync Service
 class PowerSyncSchema {
   static const String schema = '''
+    -- Table des organisations (entreprises)
+    CREATE TABLE IF NOT EXISTS organizations(
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      slug TEXT UNIQUE,
+      license_tier TEXT,
+      created_at TEXT,
+      updated_at TEXT
+    );
+
+    -- Table des membres d'organisation
+    CREATE TABLE IF NOT EXISTS organization_members(
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      organization_id TEXT NOT NULL,
+      role TEXT DEFAULT 'member',
+      joined_at TEXT
+    );
+
     -- Table des templates d'audit
     CREATE TABLE IF NOT EXISTS templates(
       id TEXT PRIMARY KEY,
@@ -11,11 +30,12 @@ class PowerSyncSchema {
       description TEXT,
       category TEXT,
       user_id TEXT NOT NULL,
+      organization_id TEXT NOT NULL,
       is_public INTEGER DEFAULT 0,
       created_at TEXT,
       updated_at TEXT
     );
-    
+
     -- Table des questions dans les templates
     CREATE TABLE IF NOT EXISTS questions(
       id TEXT PRIMARY KEY,
@@ -26,7 +46,7 @@ class PowerSyncSchema {
       required INTEGER DEFAULT 1,
       created_at TEXT
     );
-    
+
     -- Table des audits (instances)
     CREATE TABLE IF NOT EXISTS audits(
       id TEXT PRIMARY KEY,
@@ -36,12 +56,13 @@ class PowerSyncSchema {
       score INTEGER,
       template_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
+      organization_id TEXT NOT NULL,
       started_at TEXT,
       completed_at TEXT,
       created_at TEXT,
       updated_at TEXT
     );
-    
+
     -- Table des réponses aux questions
     CREATE TABLE IF NOT EXISTS answers(
       id TEXT PRIMARY KEY,
@@ -53,11 +74,15 @@ class PowerSyncSchema {
       created_at TEXT,
       updated_at TEXT
     );
-    
+
     -- Index pour optimiser les performances
+    CREATE INDEX IF NOT EXISTS idx_org_members_user ON organization_members(user_id);
+    CREATE INDEX IF NOT EXISTS idx_org_members_org ON organization_members(organization_id);
+    CREATE INDEX IF NOT EXISTS idx_templates_org ON templates(organization_id);
     CREATE INDEX IF NOT EXISTS idx_templates_user ON templates(user_id);
     CREATE INDEX IF NOT EXISTS idx_templates_category ON templates(category);
     CREATE INDEX IF NOT EXISTS idx_questions_template ON questions(template_id);
+    CREATE INDEX IF NOT EXISTS idx_audits_org ON audits(organization_id);
     CREATE INDEX IF NOT EXISTS idx_audits_user ON audits(user_id);
     CREATE INDEX IF NOT EXISTS idx_audits_status ON audits(status);
     CREATE INDEX IF NOT EXISTS idx_audits_template ON audits(template_id);

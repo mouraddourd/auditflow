@@ -130,6 +130,7 @@ export async function createAudit(data: {
   description?: string;
   templateId: string;
   userId: string;
+  organizationId: string;
 }) {
   return prisma.audit.create({
     data: {
@@ -137,6 +138,7 @@ export async function createAudit(data: {
       description: data.description,
       templateId: data.templateId,
       userId: data.userId,
+      organizationId: data.organizationId,
       status: 'draft',
     },
     include: {
