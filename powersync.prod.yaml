@@ -1,18 +1,18 @@
-# Configuration PowerSync Service Self-Hosted
+# Configuration PowerSync Service Self-Hosted - PRODUCTION
 # Documentation: https://docs.powersync.com/self-hosting
-# This is a TEMPLATE - envsubst will replace variables at runtime
+# IMPORTANT: Update credentials before deploying to production
 
 # Source database replication
 replication:
   connections:
     - type: postgresql
-      uri: postgresql://postgres:titi@postgres:5432/auditflow
+      uri: postgresql://POSTGRES_USER:POSTGRES_PASSWORD@db:5432/POSTGRES_DB
       sslmode: disable
 
 # Bucket storage database
 storage:
   type: postgresql
-  uri: postgresql://postgres:titi@postgres:5432/powersync_storage
+  uri: postgresql://POSTGRES_USER:POSTGRES_PASSWORD@db:5432/powersync_storage
   sslmode: disable
 
 # Sync Rules (simplified - no subqueries allowed)

@@ -1,13 +1,91 @@
+version: '3.8'
+
+networks:
+  proxy_public:
+    external: true
+  internal_prod:
+    internal: true
+
 services:
-  # PostgreSQL with logical replication enabled
-  postgres:
-    image: postgres:16-alpine
+  # Backend Express API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     environment:
-      POSTGRES_USER: auditflow
-      POSTGRES_PASSWORD: auditflow_password
-      POSTGRES_DB: auditflow
-    ports:
-      - "5432:5432"
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - POWERSYNC_URL=http://powersync:8080
+      - PORT=${BACKEND_PORT:-3000}
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - proxy_public
+      - internal_prod
+    depends_on:
+      db:
+        condition: service_healthy
+      powersync:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${BACKEND_PORT:-3000}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy_public"
+      - "traefik.http.routers.backend.rule=Host(`${API_DOMAIN}`)"
+      - "traefik.http.routers.backend.entrypoints=web,websecure"
+      - "traefik.http.routers.backend.tls.certresolver=myresolver"
+      - "traefik.http.routers.backend.service=backend"
+      - "traefik.http.services.backend.loadbalancer.server.port=${BACKEND_PORT:-3000}"
+
+  # PowerSync Service (self-hosted)
+  powersync:
+    image: journeyapps/powersync-service:latest
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST=db
+      - POWERSYNC_PUBLIC_KEY=${POWERSYNC_PUBLIC_KEY}
+      - JWT_SECRET=${POWERSYNC_JWT_SECRET}
+      - LOG_LEVEL=info
+    networks:
+      - internal_prod
+    volumes:
+      - ./powersync.template.yaml:/app/powersync.template.yaml:ro
+      - ./powersync-sync-rules.yml:/config/powersync-sync-rules.yml:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "envsubst < /app/powersync.template.yaml > /tmp/powersync.yaml &&
+             exec /app/bin/powersync start --config /tmp/powersync.yaml"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/probes/liveness', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # PostgreSQL with logical replication enabled
+  db:
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    networks:
+      - internal_prod
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
@@ -16,66 +94,12 @@ services:
       -c wal_level=logical
       -c max_replication_slots=10
       -c max_wal_senders=10
-      -c shared_preload_libraries=pg_stat_statements
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U auditflow -d auditflow"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
-
-  # PowerSync Service (self-hosted)
-  powersync:
-    image: journeyapps/powersync-service:latest
-    environment:
-      # Database connection
-      DATABASE_URL: postgresql://auditflow:auditflow_password@postgres:5432/auditflow
-      DATABASE_SSL: "false"
-      
-      # PowerSync configuration
-      POWERSYNC_PUBLIC_KEY: |
-        -----BEGIN PUBLIC KEY-----
-        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2xH6...
-        -----END PUBLIC KEY-----
-      
-      # Sync rules file path (mounted volume)
-      SYNC_RULES_PATH: /config/powersync-sync-rules.yml
-      
-      # JWT secret (use a strong secret in production)
-      JWT_SECRET: your-jwt-secret-key-change-in-production
-      
-      # Logging
-      LOG_LEVEL: info
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./powersync.yaml:/app/powersync.yaml:ro
-      - ./powersync-sync-rules.yml:/config/powersync-sync-rules.yml:ro
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/probes/liveness', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Backend Express API
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    environment:
-      NODE_ENV: production
-      DATABASE_URL: postgresql://auditflow:auditflow_password@postgres:5432/auditflow
-      POWERSYNC_URL: http://powersync:8080
-      PORT: 3000
-    ports:
-      - "3000:3000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      powersync:
-        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:
