@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { AuthService, RegisterInput, LoginInput } from './auth.service';
+import { requireAuth } from './auth.middleware';
 
 const router = Router();
 
@@ -51,27 +52,8 @@ router.post('/login', async (req: Request, res: Response) => {
  * GET /auth/me
  * Get current user info (requires authentication)
  */
-router.get('/me', async (req: Request, res: Response) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({
-      success: false,
-      error: 'Token d\'authentification requis',
-    });
-  }
-
-  const token = authHeader.substring(7);
-  const decoded = AuthService.verifyToken(token);
-
-  if (!decoded) {
-    return res.status(401).json({
-      success: false,
-      error: 'Token invalide ou expiré',
-    });
-  }
-
-  const user = await AuthService.getUserById(decoded.userId);
+router.get('/me', requireAuth, async (req: Request, res: Response) => {
+  const user = await AuthService.getUserById(req.userId!);
 
   if (!user) {
     return res.status(404).json({
