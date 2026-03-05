@@ -1,125 +1,161 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:responsive_framework/responsive_framework.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'core/theme/app_theme.dart';
+import 'core/theme/theme_provider.dart';
+import 'core/widgets/theme_toggle_button.dart';
+import 'screens/landing/landing_screen.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/dashboard/dashboard_screen.dart';
+import 'screens/audits/audits_list_screen.dart';
+import 'screens/audits/create_audit_screen.dart';
+import 'screens/audits/audit_fill_screen.dart';
+import 'screens/templates/templates_list_screen.dart';
+import 'screens/templates/create_template_screen.dart';
+import 'screens/results/results_screen.dart';
+import 'screens/settings/settings_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const AuditFlowApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class AuditFlowApp extends StatelessWidget {
+  const AuditFlowApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+    return ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: Builder(
+        builder: (context) {
+          final themeProvider = context.watch<ThemeProvider>();
+          return MaterialApp(
+            title: 'AuditFlow',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeProvider.themeMode,
+            builder: (context, child) => ResponsiveBreakpoints.builder(
+              child: child!,
+              breakpoints: [
+                const Breakpoint(start: 0, end: 480, name: MOBILE),
+                const Breakpoint(start: 481, end: 800, name: TABLET),
+                const Breakpoint(
+                    start: 801, end: double.infinity, name: DESKTOP),
+              ],
+            ),
+            home: const AuthWrapper(),
+          );
+        },
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<AuthWrapper> createState() => _AuthWrapperState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool _isLoggedIn = false;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  void _login() {
+    setState(() => _isLoggedIn = true);
+  }
+
+  void _logout() {
+    setState(() => _isLoggedIn = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    if (!_isLoggedIn) {
+      return LoginScreen(onLogin: _login);
+    }
+    return MainScreen(onLogout: _logout);
+  }
+}
+
+class MainScreen extends StatefulWidget {
+  final VoidCallback onLogout;
+  const MainScreen({super.key, required this.onLogout});
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  int _currentIndex = 0;
+
+  void _navigateTo(int index) {
+    setState(() => _currentIndex = index);
+  }
+
+  void _navigateToPage(Widget page) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => page),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _currentIndex,
+            children: [
+              DashboardScreen(
+                onNavigate: _navigateTo,
+                onNavigateToPage: _navigateToPage,
+              ),
+              AuditsListScreen(
+                onNavigateToPage: _navigateToPage,
+              ),
+              TemplatesListScreen(
+                onNavigateToPage: _navigateToPage,
+              ),
+              SettingsScreen(onLogout: widget.onLogout),
+            ],
+          ),
+          // Global theme toggle button
+          const GlobalThemeFAB(
+            offset: Offset(16, 8),
+            size: 44,
+          ),
+        ],
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: _navigateTo,
+        destinations: [
+          NavigationDestination(
+            icon: Icon(FontAwesomeIcons.chartPie, size: 22),
+            selectedIcon: Icon(FontAwesomeIcons.chartPie, size: 22),
+            label: 'Dashboard',
+          ),
+          NavigationDestination(
+            icon: Icon(FontAwesomeIcons.clipboard, size: 22),
+            selectedIcon: Icon(FontAwesomeIcons.solidClipboard, size: 22),
+            label: 'Audits',
+          ),
+          NavigationDestination(
+            icon: Icon(FontAwesomeIcons.fileLines, size: 22),
+            selectedIcon: Icon(FontAwesomeIcons.solidFileLines, size: 22),
+            label: 'Templates',
+          ),
+          NavigationDestination(
+            icon: Icon(FontAwesomeIcons.gear, size: 22),
+            selectedIcon: Icon(FontAwesomeIcons.gear, size: 22),
+            label: 'Paramètres',
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }

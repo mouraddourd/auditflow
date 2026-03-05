@@ -1,7 +1,149 @@
 generator client {
   provider = "prisma-client-js"
+  engineType = "client"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// User model
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String   // Hashed password
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  fcmTokens     FcmToken[]
+  notifications Notification[]
+  audits        Audit[]
+  templates     Template[]
+
+  @@map("users")
+}
+
+// Audit Template
+model Template {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  category    String?
+  userId      String
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions Question[]
+  audits   Audit[]
+
+  @@index([userId])
+  @@index([category])
+  @@map("templates")
+}
+
+// Question dans un template
+model Question {
+  id         String   @id @default(cuid())
+  templateId String
+  type       String   // "boolean" | "scale" | "text"
+  text       String
+  order      Int      @default(0)
+  required   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  // Relations
+  template  Template   @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  answers   Answer[]
+
+  @@index([templateId])
+  @@map("questions")
+}
+
+// Audit (instance d'un template)
+model Audit {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  status      String    @default("draft") // "draft" | "in_progress" | "completed"
+  score       Int?      // Score calculé (0-100)
+  templateId  String
+  userId      String
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  template Template  @relation(fields: [templateId], references: [id])
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers  Answer[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([templateId])
+  @@map("audits")
+}
+
+// Réponse à une question dans un audit
+model Answer {
+  id        String   @id @default(cuid())
+  auditId   String
+  questionId String
+  value     String   // "yes" | "no" | "1-5" | text
+  comment   String?
+  score     Int?     // Score de cette réponse
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  audit    Audit    @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id])
+
+  @@index([auditId])
+  @@index([questionId])
+  @@map("answers")
+}
+
+// FCM Token for push notifications
+model FcmToken {
+  id         String   @id @default(cuid())
+  token      String   @unique
+  userId     String
+  deviceType String   @default("web")
+  deviceId   String?
+  isActive   Boolean  @default(true)
+  lastUsed   DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("fcm_tokens")
+}
+
+// Notification history
+model Notification {
+  id        String            @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  type      String            @default("custom")
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime          @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("notifications")
 }

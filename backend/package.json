@@ -10,17 +10,22 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev"
   },
-  "keywords": ["audit", "saas"],
+  "keywords": [
+    "audit",
+    "saas"
+  ],
   "author": "",
   "license": "ISC",
   "description": "AuditFlow Backend API",
   "dependencies": {
+    "@prisma/adapter-pg": "^6.19.0",
     "@prisma/client": "^7.4.1",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "date-fns": "^4.1.0",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "firebase-admin": "^13.7.0",
     "jsonwebtoken": "^9.0.3",
     "zod": "^4.3.6"
   },

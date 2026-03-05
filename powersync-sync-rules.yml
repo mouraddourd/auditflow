@@ -1,0 +1,36 @@
+# Sync Rules PowerSync pour AuditFlow
+# Définit quelles données sont synchronisées pour chaque utilisateur
+# Documentation: https://docs.powersync.com/usage/sync-rules
+
+bucket_definitions:
+  # Données globales (templates publics)
+  global_templates:
+    # Tous les utilisateurs reçoivent les templates publics
+    data:
+      - SELECT * FROM templates WHERE is_public = true
+      - SELECT q.* FROM questions q
+        JOIN templates t ON q.template_id = t.id
+        WHERE t.is_public = true
+
+  # Données utilisateur privées
+  user_data:
+    parameters: user_id
+    data:
+      # Templates de l'utilisateur
+      - SELECT * FROM templates WHERE user_id = bucket.user_id
+      
+      # Questions des templates de l'utilisateur
+      - SELECT q.* FROM questions q
+        JOIN templates t ON q.template_id = t.id
+        WHERE t.user_id = bucket.user_id
+      
+      # Audits de l'utilisateur
+      - SELECT * FROM audits WHERE user_id = bucket.user_id
+      
+      # Réponses des audits de l'utilisateur
+      - SELECT a.* FROM answers a
+        JOIN audits au ON a.audit_id = au.id
+        WHERE au.user_id = bucket.user_id
+
+# Paramètres globaux
+# (token expiration, etc.)

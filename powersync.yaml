@@ -1,0 +1,42 @@
+# Configuration PowerSync Service Self-Hosted
+# Documentation: https://docs.powersync.com/self-hosting
+
+# Source database replication
+replication:
+  connections:
+    - type: postgresql
+      uri: postgresql://auditflow:auditflow_password@postgres:5432/auditflow
+      sslmode: disable
+
+# Bucket storage database
+storage:
+  type: postgresql
+  uri: postgresql://auditflow:auditflow_password@postgres:5432/powersync_storage
+  sslmode: disable
+
+# Sync Rules (simplified - no subqueries allowed)
+# NOTE: questions/answers are synced entirely for now
+# TODO: Add user_id column to answers for proper filtering in user_data bucket
+sync_rules:
+  content: |
+    bucket_definitions:
+      global_data:
+        data:
+          - SELECT * FROM templates WHERE is_public = true
+          - SELECT * FROM questions
+          - SELECT * FROM answers
+
+      user_data:
+        parameters: SELECT request.user_id() as user_id
+        data:
+          - SELECT * FROM templates WHERE user_id = bucket.user_id
+          - SELECT * FROM audits WHERE user_id = bucket.user_id
+
+# Server port
+port: 8080
+
+# Logging
+system:
+  logging:
+    level: info
+    format: json

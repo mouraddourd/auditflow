@@ -1,8 +1,9 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import notificationRoutes from './notifications/notification.routes';
+import auditRoutes from './audits/audit.routes';
+import powerSyncRoutes from './powersync/powersync.routes';
+import './config/env'; // Validate environment variables at startup
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,9 +11,15 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Health check
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// API Routes
+app.use('/notifications', notificationRoutes);
+app.use('/audits', auditRoutes);
+app.use('/powersync', powerSyncRoutes);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
