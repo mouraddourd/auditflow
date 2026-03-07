@@ -104,8 +104,8 @@ async function applyAuditChange(
           description: data.description,
           status: data.status || 'draft',
           score: data.score,
-          templateId: data.template_id,
-          userId: data.user_id || userId,
+          template: { connect: { id: data.template_id } },
+          user: { connect: { id: data.user_id || userId } },
           startedAt: typeof data.started_at === 'string' || typeof data.started_at === 'number' ? new Date(data.started_at) : null,
           completedAt: typeof data.completed_at === 'string' || typeof data.completed_at === 'number' ? new Date(data.completed_at) : null,
           createdAt: typeof data.created_at === 'string' || typeof data.created_at === 'number' ? new Date(data.created_at) : new Date(),
@@ -171,8 +171,8 @@ async function applyAnswerChange(
       await tx.answer.create({
         data: {
           id: change.id,
-          auditId: data.audit_id,
-          questionId: data.question_id,
+          audit: { connect: { id: data.audit_id } },
+          question: { connect: { id: data.question_id } },
           value: data.value,
           comment: data.comment,
           score: data.score,
@@ -228,7 +228,7 @@ async function applyTemplateChange(
           name: data.name,
           description: data.description,
           category: data.category,
-          userId: data.user_id || userId,
+          user: { connect: { id: data.user_id || userId } },
           isPublic: data.is_public === 1 || data.is_public === true,
           createdAt: typeof data.created_at === 'string' || typeof data.created_at === 'number' ? new Date(data.created_at) : new Date(),
           updatedAt: typeof data.updated_at === 'string' || typeof data.updated_at === 'number' ? new Date(data.updated_at) : new Date(),
@@ -280,7 +280,7 @@ async function applyQuestionChange(
       await tx.question.create({
         data: {
           id: change.id,
-          templateId: data.template_id,
+          template: { connect: { id: data.template_id } },
           type: data.type,
           text: data.text,
           order: data.order || 0,

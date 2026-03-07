@@ -31,8 +31,10 @@ export interface AuthResponse {
   error?: string;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-not-for-production';
 const JWT_EXPIRES_IN = '7d';
+
+// HS256 secret for JWT signing (PowerSync Open Edition only supports HMAC)
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-not-for-production';
 
 export class AuthService {
   /**
@@ -66,11 +68,11 @@ export class AuthService {
         },
       });
 
-      // Generate JWT
+      // Generate JWT with HS256 (PowerSync Open Edition compatible)
       const token = jwt.sign(
-        { userId: user.id, email: user.email },
+        { userId: user.id, email: user.email, kid: 'powersync-dev-key' },
         JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
+        { algorithm: 'HS256', expiresIn: JWT_EXPIRES_IN, header: { alg: 'HS256', kid: 'powersync-dev-key' } }
       );
 
       return {
@@ -128,11 +130,11 @@ export class AuthService {
         };
       }
 
-      // Generate JWT
+      // Generate JWT with HS256 (PowerSync Open Edition compatible)
       const token = jwt.sign(
-        { userId: user.id, email: user.email },
+        { userId: user.id, email: user.email, kid: 'powersync-dev-key' },
         JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
+        { algorithm: 'HS256', expiresIn: JWT_EXPIRES_IN, header: { alg: 'HS256', kid: 'powersync-dev-key' } }
       );
 
       return {
@@ -166,7 +168,7 @@ export class AuthService {
    */
   static verifyToken(token: string): { userId: string; email: string } | null {
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
+      const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as { userId: string; email: string };
       return decoded;
     } catch {
       return null;

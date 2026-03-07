@@ -265,7 +265,8 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
                           category: template['category'] as String? ??
                               'Non catégorisé',
                           questionCount:
-                              template['question_count'] as int? ?? 0,
+                              (template['question_count'] as num?)?.toInt() ??
+                                  0,
                           description: template['description'] as String? ?? '',
                           onEdit: () {
                             // TODO: Navigation vers édition de template
@@ -432,22 +433,22 @@ class _TemplateCard extends StatelessWidget {
                 child: OutlinedButton(
                   onPressed: onEdit,
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    minimumSize: const Size(0, 32),
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    minimumSize: const Size(0, 28),
                     side: BorderSide(color: theme.colorScheme.primary),
-                    textStyle: const TextStyle(fontSize: 11),
+                    textStyle: const TextStyle(fontSize: 10),
                   ),
                   child: const Text('Modifier'),
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Expanded(
                 child: ElevatedButton(
                   onPressed: onUse,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    minimumSize: const Size(0, 32),
-                    textStyle: const TextStyle(fontSize: 11),
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    minimumSize: const Size(0, 28),
+                    textStyle: const TextStyle(fontSize: 10),
                   ),
                   child: const Text('Utiliser'),
                 ),

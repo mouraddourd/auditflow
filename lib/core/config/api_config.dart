@@ -28,7 +28,8 @@ class ApiConfig {
     const url = String.fromEnvironment(
       'POWERSYNC_URL',
       // CHANGE THIS to your PC's WiFi IP when testing on physical device
-      defaultValue: 'ws://192.168.1.1:8080',
+      // Use HTTP not WS - PowerSync handles WebSocket internally
+      defaultValue: 'http://192.168.1.1:8080',
     );
     // Android emulator: localhost refers to emulator itself, use 10.0.2.2
     if (Platform.isAndroid && url.contains('localhost')) {

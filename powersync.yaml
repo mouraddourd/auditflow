@@ -1,6 +1,14 @@
 # Configuration PowerSync Service Self-Hosted
 # Documentation: https://docs.powersync.com/self-hosting
-# This is a TEMPLATE - envsubst will replace variables at runtime
+
+# Client authentication with HS256 symmetric key
+client_auth:
+  jwks:
+    keys:
+      - kty: oct
+        kid: powersync-dev-key
+        alg: HS256
+        k: ZGV2LWp3dC1zZWNyZXQtbm90LWZvci1wcm9kdWN0aW9u
 
 # Source database replication
 replication:

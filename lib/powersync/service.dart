@@ -561,8 +561,8 @@ class PowerSyncService {
       final questionId = _generateId();
 
       await db.execute('''
-        INSERT INTO questions (id, template_id, type, text, "order", required, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO questions (id, template_id, type, text, "order", required, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       ''', [
         questionId,
         id,
@@ -570,7 +570,6 @@ class PowerSyncService {
         question['text'] as String? ?? '',
         i + 1, // order (1-indexed)
         question['required'] as bool? ?? false ? 1 : 0,
-        now,
         now,
       ]);
     }
@@ -757,6 +756,7 @@ class _AuditFlowConnector extends PowerSyncBackendConnector {
     return PowerSyncCredentials(
       endpoint: endpoint,
       token: token,
+      userId: userId,
     );
   }
 }

@@ -30,8 +30,16 @@ services:
     image: journeyapps/powersync-service:latest
     environment:
       - PORT=8080
-      - POWERSYNC_PUBLIC_KEY=${POWERSYNC_PUBLIC_KEY:-}
-      - JWT_SECRET=dev-jwt-secret-not-for-production
+      - POWERSYNC_PUBLIC_KEY=|
+          -----BEGIN PUBLIC KEY-----
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA02q1EbLLI5SAZPrspXqz
+          iIq8OZOVZlbmUaSHnJNzTfbJjVGdNG6dRMLxyGKBp3eb59qXl5mrrCWeOq7qDDpC
+          cdX3Sv74o5XslASVUktXxiQ9iLJmHlb8oFhw6yEAqagjrgyEpeVIZHKWajcn+0/2
+          3e+CcwQZLS9Kbz/talvyNPKz5ImEOox1mJHtVDXTPODDytxSAHbEa14NHp8DtOPK
+          c8HNtd2QZ59EvhUrlkTRg39z8U4sE3EvYdap1zZ8myGC2qiYGpsFX/dxI31R8kgr
+          SXSVrAvic4v1PmLH/KWppK3tuZ/Nq3wOrb7hfEOG7d9eMPD4Dv2+mw/Dvb3m9qWG
+          8wIDAQAB
+          -----END PUBLIC KEY-----
       - LOG_LEVEL=debug
     ports:
       - "8080:8080"
