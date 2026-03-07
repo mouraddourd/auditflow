@@ -507,7 +507,13 @@ class PowerSyncService {
   }
 
   /// Retourne le chemin de la base de données SQLite
+  /// Sur web, retourne juste le nom (IndexedDB), sur mobile/desktop le chemin fichier
   Future<String> _getDatabasePath() async {
+    if (kIsWeb) {
+      // Sur web, PowerSync utilise IndexedDB, pas besoin de chemin fichier
+      return 'auditflow_powersync.db';
+    }
+    // Sur mobile/desktop, utiliser le dossier documents
     final directory = await getApplicationDocumentsDirectory();
     return join(directory.path, 'auditflow_powersync.db');
   }
