@@ -1,16 +1,165 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../../powersync/service.dart';
+import 'package:intl/intl.dart';
 
-class ResultsScreen extends StatelessWidget {
-  const ResultsScreen({super.key});
+/// Écran de résultats d'audit avec données réelles depuis PowerSync.
+///
+/// Reçoit auditId en paramètre de navigation.
+/// Affiche le score global, les scores par catégorie et les problèmes.
+class ResultsScreen extends StatefulWidget {
+  final String auditId;
+
+  const ResultsScreen({
+    super.key,
+    required this.auditId,
+  });
+
+  @override
+  State<ResultsScreen> createState() => _ResultsScreenState();
+}
+
+class _ResultsScreenState extends State<ResultsScreen> {
+  bool _isLoading = true;
+  String? _error;
+
+  Map<String, dynamic>? _audit;
+  Map<String, int> _categoryScores = {};
+  List<Map<String, dynamic>> _issues = [];
+  int _globalScore = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadResults();
+  }
+
+  Future<void> _loadResults() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      final results = await PowerSyncService().getAuditResults(widget.auditId);
+
+      final audit = results['audit'] as Map<String, dynamic>?;
+      final categoryScores = results['categoryScores'] as Map<String, int>;
+      final issues = results['issues'] as List<Map<String, dynamic>>;
+
+      // Calculer le score global (moyenne des scores par catégorie)
+      int globalScore = 0;
+      if (categoryScores.isNotEmpty) {
+        globalScore = (categoryScores.values.reduce((a, b) => a + b) /
+                categoryScores.length)
+            .round();
+      }
+
+      setState(() {
+        _audit = audit;
+        _categoryScores = categoryScores;
+        _issues = issues;
+        _globalScore = globalScore;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Erreur lors du chargement: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Color _getScoreColor(int score) {
+    if (score >= 80) return Colors.green;
+    if (score >= 50) return Colors.orange;
+    return Colors.red;
+  }
+
+  String _getScoreLabel(int score) {
+    if (score >= 80) return 'Conformité satisfaisante';
+    if (score >= 50) return 'Conformité moyenne';
+    return 'Conformité insuffisante';
+  }
+
+  IconData _getCategoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'sécurité':
+      case 'securite':
+        return FontAwesomeIcons.shieldHalved;
+      case 'hygiène':
+      case 'hygiene':
+        return FontAwesomeIcons.handSparkles;
+      case 'qualité':
+      case 'qualite':
+        return FontAwesomeIcons.circleCheck;
+      case 'conformité':
+      case 'conformite':
+        return FontAwesomeIcons.scaleBalanced;
+      case 'environnement':
+        return FontAwesomeIcons.leaf;
+      case 'technique':
+        return FontAwesomeIcons.wrench;
+      default:
+        return FontAwesomeIcons.clipboardList;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    // État de chargement
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Résultats de l\'audit'),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // État d'erreur
+    if (_error != null || _audit == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Résultats de l\'audit'),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(FontAwesomeIcons.triangleExclamation,
+                  size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(_error ?? 'Audit non trouvé',
+                  style: theme.textTheme.bodyLarge),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadResults,
+                child: const Text('Réessayer'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Formater la date
+    final completedAt = _audit!['completed_at'] as String?;
+    final dateStr = completedAt != null
+        ? DateFormat('d MMM yyyy', 'fr_FR').format(DateTime.parse(completedAt))
+        : 'Non terminé';
+
+    final status = _audit!['status'] as String? ?? 'draft';
+    final statusColor = status == 'completed' ? Colors.green : Colors.orange;
+    final statusLabel = status == 'completed' ? 'Terminé' : 'En cours';
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Résultats de l\'audit'),
+        title: Text(_audit!['title'] as String? ?? 'Résultats'),
         leading: IconButton(
           icon: const Icon(FontAwesomeIcons.arrowLeft),
           onPressed: () => Navigator.pop(context),
@@ -18,7 +167,11 @@ class ResultsScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(FontAwesomeIcons.shareNodes),
-            onPressed: () {},
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Export à implémenter')),
+              );
+            },
           ),
         ],
       ),
@@ -34,19 +187,19 @@ class ResultsScreen extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.2),
+                    color: statusColor.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(FontAwesomeIcons.circleCheck,
-                          size: 16, color: Colors.green[700]),
+                          size: 16, color: statusColor),
                       const SizedBox(width: 4),
                       Text(
-                        'Terminé',
+                        statusLabel,
                         style: TextStyle(
-                          color: Colors.green[700],
+                          color: statusColor,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -56,7 +209,7 @@ class ResultsScreen extends StatelessWidget {
                 ),
                 const Spacer(),
                 Text(
-                  '26 Fév 2025',
+                  dateStr,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withOpacity(0.6),
                   ),
@@ -88,7 +241,7 @@ class ResultsScreen extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '82%',
+                    '$_globalScore%',
                     style: theme.textTheme.displayLarge?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -102,9 +255,9 @@ class ResultsScreen extends StatelessWidget {
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text(
-                      'Conformité satisfaisante',
-                      style: TextStyle(color: Colors.white),
+                    child: Text(
+                      _getScoreLabel(_globalScore),
+                      style: const TextStyle(color: Colors.white),
                     ),
                   ),
                 ],
@@ -112,69 +265,57 @@ class ResultsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             // Category scores
-            Text(
-              'Scores par catégorie',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
+            if (_categoryScores.isNotEmpty) ...[
+              Text(
+                'Scores par catégorie',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            _CategoryScore(
-              category: 'Sécurité',
-              score: 95,
-              color: Colors.green,
-              icon: FontAwesomeIcons.shieldHalved,
-            ),
-            const SizedBox(height: 12),
-            _CategoryScore(
-              category: 'Hygiène',
-              score: 88,
-              color: Colors.blue,
-              icon: FontAwesomeIcons.handSparkles,
-            ),
-            const SizedBox(height: 12),
-            _CategoryScore(
-              category: 'Qualité',
-              score: 75,
-              color: Colors.orange,
-              icon: FontAwesomeIcons.circleCheck,
-            ),
-            const SizedBox(height: 12),
-            _CategoryScore(
-              category: 'Conformité',
-              score: 62,
-              color: Colors.red,
-              icon: FontAwesomeIcons.scaleBalanced,
-            ),
-            const SizedBox(height: 24),
-            // Issues found
-            Text(
-              'Points à améliorer',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
+              const SizedBox(height: 16),
+              ..._categoryScores.entries.map((entry) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _CategoryScore(
+                      category: entry.key,
+                      score: entry.value,
+                      color: _getScoreColor(entry.value),
+                      icon: _getCategoryIcon(entry.key),
+                    ),
+                  )),
+            ],
+            // Issues
+            if (_issues.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Text(
+                'Points à améliorer',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            _IssueCard(
-              title: 'Éclairage insuffisant',
-              category: 'Sécurité',
-              severity: 'Moyenne',
-              recommendation: 'Installer des luminaires supplémentaires',
-            ),
-            const SizedBox(height: 12),
-            _IssueCard(
-              title: 'Documentation incomplète',
-              category: 'Conformité',
-              severity: 'Haute',
-              recommendation: 'Compléter les fiches de sécurité manquantes',
-            ),
+              const SizedBox(height: 16),
+              ..._issues.map((issue) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _IssueCard(
+                      title: issue['question'] as String? ?? 'Question',
+                      category: issue['category'] as String? ?? 'Général',
+                      severity: issue['value'] == 'false' ? 'Haute' : 'Moyenne',
+                      recommendation:
+                          issue['comment'] as String? ?? 'À corriger',
+                    ),
+                  )),
+            ],
             const SizedBox(height: 24),
             // Action buttons
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Export PDF à implémenter')),
+                      );
+                    },
                     icon: const Icon(FontAwesomeIcons.download),
                     label: const Text('PDF'),
                   ),
@@ -182,7 +323,12 @@ class ResultsScreen extends StatelessWidget {
                 const SizedBox(width: 16),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Export Excel à implémenter')),
+                      );
+                    },
                     icon: const Icon(FontAwesomeIcons.fileExcel),
                     label: const Text('Excel'),
                   ),
