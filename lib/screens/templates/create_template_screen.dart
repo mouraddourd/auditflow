@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../../powersync/service.dart';
 
 class CreateTemplateScreen extends StatefulWidget {
   const CreateTemplateScreen({super.key});
@@ -13,6 +14,9 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
   final _descriptionController = TextEditingController();
   String? _selectedCategory;
   final List<Map<String, dynamic>> _questions = [];
+
+  bool _isSaving = false;
+  String? _validationError;
 
   final List<String> _categories = [
     'Qualité',
@@ -43,6 +47,54 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
     });
   }
 
+  /// Sauvegarde le template dans PowerSync
+  Future<void> _saveTemplate() async {
+    // Validation
+    if (_titleController.text.trim().isEmpty) {
+      setState(() => _validationError = 'Le nom du template est requis');
+      return;
+    }
+    if (_selectedCategory == null) {
+      setState(() => _validationError = 'La catégorie est requise');
+      return;
+    }
+    if (_questions.isEmpty) {
+      setState(() => _validationError = 'Au moins une question est requise');
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+      _validationError = null;
+    });
+
+    try {
+      await PowerSyncService().createTemplate(
+        name: _titleController.text.trim(),
+        category: _selectedCategory!,
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
+        questions: _questions,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Template créé avec succès'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      setState(() {
+        _isSaving = false;
+        _validationError = 'Erreur lors de la sauvegarde: $e';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -56,9 +108,15 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
         ),
         actions: [
           TextButton.icon(
-            onPressed: () {},
-            icon: const Icon(FontAwesomeIcons.floppyDisk),
-            label: const Text('Sauvegarder'),
+            onPressed: _isSaving ? null : _saveTemplate,
+            icon: _isSaving
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(FontAwesomeIcons.floppyDisk),
+            label: Text(_isSaving ? 'Sauvegarde...' : 'Sauvegarder'),
           ),
         ],
       ),
@@ -67,6 +125,30 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Validation error banner
+            if (_validationError != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(FontAwesomeIcons.circleExclamation,
+                        color: Colors.red, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _validationError!,
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             // Info section
             Text(
               'Informations générales',

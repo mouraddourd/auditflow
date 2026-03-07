@@ -531,6 +531,69 @@ class PowerSyncService {
     return template;
   }
 
+  /// Crée un nouveau template avec ses questions
+  ///
+  /// [name] - Nom du template (requis)
+  /// [category] - Catégorie du template (requis)
+  /// [description] - Description optionnelle
+  /// [questions] - Liste des questions avec type, text, options, etc.
+  Future<Map<String, dynamic>> createTemplate({
+    required String name,
+    required String category,
+    String? description,
+    required List<Map<String, dynamic>> questions,
+  }) async {
+    if (_userId == null) throw StateError('User not authenticated');
+    if (_organizationId == null) throw StateError('No organization selected');
+
+    final id = _generateId();
+    final now = DateTime.now().toIso8601String();
+
+    // Insérer le template
+    await db.execute('''
+      INSERT INTO templates (id, name, description, category, organization_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', [id, name, description, category, _organizationId, now, now]);
+
+    // Insérer les questions
+    for (var i = 0; i < questions.length; i++) {
+      final question = questions[i];
+      final questionId = _generateId();
+
+      await db.execute('''
+        INSERT INTO questions (id, template_id, type, text, category, "order", required, options, min, max, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ''', [
+        questionId,
+        id,
+        question['type'] as String? ?? 'text',
+        question['text'] as String? ?? '',
+        question['category'] as String? ?? category,
+        i + 1, // order (1-indexed)
+        question['required'] as bool? ?? false ? 1 : 0,
+        question['options'] != null
+            ? (question['options'] as List).join('|')
+            : null,
+        question['min'] as int?,
+        question['max'] as int?,
+        now,
+        now,
+      ]);
+    }
+
+    // Retourner le template créé
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'category': category,
+      'organization_id': _organizationId,
+      'created_at': now,
+      'updated_at': now,
+      'question_count': questions.length,
+    };
+  }
+
   /// Récupère les statistiques des audits (organisation)
   Future<Map<String, dynamic>> getAuditStats() async {
     if (_organizationId == null) {
