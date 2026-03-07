@@ -1,10 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../core/theme/theme_provider.dart';
+import '../../powersync/service.dart';
 
+/// Écran de remplissage d'audit avec questions chargées depuis PowerSync.
+///
+/// Reçoit auditId et templateId en paramètres de navigation.
+/// Les questions sont chargées via getTemplateById() et les réponses
+/// sont sauvegardées automatiquement via saveAnswer().
 class AuditFillScreen extends StatefulWidget {
-  const AuditFillScreen({super.key});
+  final String auditId;
+  final String templateId;
+  final String auditTitle;
+
+  const AuditFillScreen({
+    super.key,
+    required this.auditId,
+    required this.templateId,
+    required this.auditTitle,
+  });
 
   @override
   State<AuditFillScreen> createState() => _AuditFillScreenState();
@@ -12,55 +25,103 @@ class AuditFillScreen extends StatefulWidget {
 
 class _AuditFillScreenState extends State<AuditFillScreen> {
   int _currentQuestion = 0;
-  final Map<int, dynamic> _answers = {};
+  final Map<String, dynamic> _answers = {}; // questionId -> answer value
   double _progress = 0.0;
 
-  final List<Map<String, dynamic>> _questions = [
-    {
-      'type': 'yes_no',
-      'question': 'Les équipements de sécurité sont-ils en bon état ?',
-      'category': 'Sécurité',
-      'help':
-          'Vérifiez l\'état des extincteurs, détecteurs d\'incendie, issues de secours...',
-    },
-    {
-      'type': 'scale',
-      'question': 'Évaluez la propreté des locaux',
-      'category': 'Hygiène',
-      'min': 1,
-      'max': 5,
-      'help': '1 = Très sale, 5 = Impeccable',
-    },
-    {
-      'type': 'text',
-      'question': 'Décrivez les anomalies constatées',
-      'category': 'Général',
-      'help': 'Soyez précis et factuel dans votre description',
-    },
-    {
-      'type': 'multiple',
-      'question': 'Quels équipements manquent ?',
-      'category': 'Matériel',
-      'options': ['EPI', 'Outillage', 'Signalisation', 'Documentation'],
-      'help': 'Sélectionnez tout ce qui s\'applique',
-    },
-    {
-      'type': 'photo',
-      'question': 'Prenez une photo du problème',
-      'category': 'Preuves',
-      'help': 'Ajoutez des photos pour documenter les anomalies',
-    },
-  ];
+  bool _isLoading = true;
+  String? _error;
+
+  List<Map<String, dynamic>> _questions = [];
+  Map<String, dynamic>?
+      _existingAnswers; // Pour charger les réponses existantes
 
   @override
   void initState() {
     super.initState();
-    _updateProgress();
+    _loadTemplate();
+  }
+
+  /// Charge le template et ses questions depuis PowerSync.
+  /// Met à jour le statut de l'audit à 'in_progress' si c'est un draft.
+  Future<void> _loadTemplate() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      // Charger le template avec ses questions
+      final template =
+          await PowerSyncService().getTemplateById(widget.templateId);
+
+      if (template == null) {
+        setState(() {
+          _error = 'Template non trouvé';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Charger les réponses existantes pour cet audit
+      final existingAnswers = await _loadExistingAnswers();
+
+      // Mettre à jour le statut de l'audit à 'in_progress' si c'est un draft
+      // Cela permet de suivre quels audits ont été commencés
+      await _updateAuditToInProgress();
+
+      setState(() {
+        _questions = (template['questions'] as List<dynamic>?)
+                ?.cast<Map<String, dynamic>>() ??
+            [];
+        _existingAnswers = existingAnswers;
+        _isLoading = false;
+      });
+
+      _updateProgress();
+    } catch (e) {
+      setState(() {
+        _error = 'Erreur lors du chargement: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  /// Charge les réponses existantes pour cet audit depuis PowerSync.
+  Future<Map<String, dynamic>> _loadExistingAnswers() async {
+    try {
+      final answers = await PowerSyncService().db.getAll(
+        'SELECT question_id, value FROM answers WHERE audit_id = ?',
+        [widget.auditId],
+      );
+
+      // Convertir en map questionId -> value
+      final Map<String, dynamic> result = {};
+      for (final answer in answers) {
+        result[answer['question_id'] as String] = answer['value'];
+      }
+      return result;
+    } catch (e) {
+      // Si erreur, retourner un map vide (nouvel audit)
+      return {};
+    }
+  }
+
+  /// Met à jour le statut de l'audit à 'in_progress' si c'est un draft.
+  /// Cela permet de suivre quels audits ont été commencés.
+  Future<void> _updateAuditToInProgress() async {
+    try {
+      await PowerSyncService().updateAuditStatus(widget.auditId, 'in_progress');
+    } catch (e) {
+      // Ignorer l'erreur - l'audit reste en draft
+      debugPrint('Erreur mise à jour statut audit: $e');
+    }
   }
 
   void _updateProgress() {
+    final answeredCount =
+        _questions.where((q) => _answers.containsKey(q['id'])).length;
     setState(() {
-      _progress = _answers.length / _questions.length;
+      _progress = _questions.isEmpty ? 0.0 : answeredCount / _questions.length;
     });
   }
 
@@ -76,29 +137,188 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
     }
   }
 
-  void _saveAnswer(dynamic answer) {
+  /// Sauvegarde la réponse dans PowerSync (auto-save).
+  /// Appelé à chaque changement de réponse pour éviter la perte de données.
+  Future<void> _saveAnswer(dynamic answer) async {
+    if (_questions.isEmpty) return;
+
+    final question = _questions[_currentQuestion];
+    final questionId = question['id'] as String;
+
     setState(() {
-      _answers[_currentQuestion] = answer;
+      _answers[questionId] = answer;
     });
     _updateProgress();
+
+    // Sauvegarder dans PowerSync (auto-save)
+    try {
+      await PowerSyncService().saveAnswer(
+        auditId: widget.auditId,
+        questionId: questionId,
+        value: answer.toString(),
+      );
+    } catch (e) {
+      // Afficher un snackbar d'erreur mais continuer
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la sauvegarde: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Finalise l'audit: calcule le score et met à jour le statut.
+  Future<void> _finishAudit() async {
+    try {
+      // Calculer le score basé sur les réponses
+      // Pour les questions yes_no: true = 100, false = 0
+      // Pour les questions scale: valeur normalisée sur 100
+      int totalScore = 0;
+      int scoredQuestions = 0;
+
+      for (final question in _questions) {
+        final questionId = question['id'] as String;
+        final answer = _answers[questionId];
+        final type = question['type'] as String?;
+
+        if (answer == null) continue;
+
+        if (type == 'yes_no') {
+          totalScore += answer == true ? 100 : 0;
+          scoredQuestions++;
+        } else if (type == 'scale') {
+          // Normaliser sur 100 (suppose min=1, max=5 par défaut)
+          final min = (question['min'] as int?) ?? 1;
+          final max = (question['max'] as int?) ?? 5;
+          final normalizedScore = ((answer as int) - min) / (max - min) * 100;
+          totalScore += normalizedScore.round();
+          scoredQuestions++;
+        }
+      }
+
+      // Score moyen si des questions ont été répondues
+      final avgScore =
+          scoredQuestions > 0 ? (totalScore / scoredQuestions).round() : null;
+
+      // Mettre à jour le statut de l'audit à 'completed'
+      await PowerSyncService().updateAuditStatus(
+        widget.auditId,
+        'completed',
+        score: avgScore,
+      );
+
+      if (mounted) {
+        // Naviguer vers l'écran de résultats
+        Navigator.pushReplacementNamed(
+          context,
+          '/audit/results',
+          arguments: {
+            'auditId': widget.auditId,
+            'templateId': widget.templateId,
+          },
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la finalisation: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    // État de chargement
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(widget.auditTitle),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // État d'erreur
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(widget.auditTitle),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(FontAwesomeIcons.triangleExclamation,
+                  size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(_error!, style: theme.textTheme.bodyLarge),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadTemplate,
+                child: const Text('Réessayer'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // État vide (pas de questions)
+    if (_questions.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(widget.auditTitle),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(FontAwesomeIcons.clipboardQuestion,
+                  size: 48, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text('Ce template ne contient aucune question',
+                  style: theme.textTheme.bodyLarge),
+            ],
+          ),
+        ),
+      );
+    }
+
     final question = _questions[_currentQuestion];
+    final questionId = question['id'] as String;
+    final currentAnswer = _answers[questionId] ?? _existingAnswers?[questionId];
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Remplir l\'audit'),
+        title: Text(widget.auditTitle),
         leading: IconButton(
           icon: const Icon(FontAwesomeIcons.arrowLeft),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(FontAwesomeIcons.floppyDisk),
-            onPressed: () {},
+          // Indicateur de sauvegarde auto
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Icon(FontAwesomeIcons.cloudArrowUp,
+                    size: 16, color: Colors.green),
+                const SizedBox(width: 4),
+                Text('Auto-sauvegarde',
+                    style: TextStyle(fontSize: 12, color: Colors.green)),
+              ],
+            ),
           ),
         ],
       ),
@@ -152,59 +372,35 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  // Category badge
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      question['category'] as String,
-                      style: TextStyle(
-                        color: theme.colorScheme.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                  // Category badge (if available)
+                  if (question['category'] != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        question['category'] as String,
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
                   const SizedBox(height: 16),
-                  // Question
+                  // Question text (use 'text' field from PowerSync)
                   Text(
-                    question['question'] as String,
+                    question['text'] as String? ?? 'Question sans texte',
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  // Help text
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(FontAwesomeIcons.circleInfo,
-                            size: 20, color: theme.colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            question['help'] as String,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color:
-                                  theme.colorScheme.onSurface.withOpacity(0.7),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                   const SizedBox(height: 32),
                   // Answer widget based on type
-                  _buildAnswerWidget(question),
+                  _buildAnswerWidget(question, currentAnswer),
                 ],
               ),
             ),
@@ -237,7 +433,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                   child: ElevatedButton.icon(
                     onPressed: _currentQuestion < _questions.length - 1
                         ? _nextQuestion
-                        : () {},
+                        : _finishAudit,
                     icon: Icon(
                       _currentQuestion < _questions.length - 1
                           ? FontAwesomeIcons.arrowRight
@@ -263,9 +459,9 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
     );
   }
 
-  Widget _buildAnswerWidget(Map<String, dynamic> question) {
-    final type = question['type'] as String;
-    final currentAnswer = _answers[_currentQuestion];
+  Widget _buildAnswerWidget(
+      Map<String, dynamic> question, dynamic currentAnswer) {
+    final type = question['type'] as String?;
 
     switch (type) {
       case 'yes_no':
@@ -276,7 +472,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                 icon: FontAwesomeIcons.check,
                 label: 'Conforme',
                 color: Colors.green,
-                isSelected: currentAnswer == true,
+                isSelected: currentAnswer == 'true' || currentAnswer == true,
                 onTap: () => _saveAnswer(true),
               ),
             ),
@@ -286,22 +482,25 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                 icon: FontAwesomeIcons.xmark,
                 label: 'Non conforme',
                 color: Colors.red,
-                isSelected: currentAnswer == false,
+                isSelected: currentAnswer == 'false' || currentAnswer == false,
                 onTap: () => _saveAnswer(false),
               ),
             ),
           ],
         );
       case 'scale':
+        final min = (question['min'] as int?) ?? 1;
+        final max = (question['max'] as int?) ?? 5;
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: List.generate(
-            (question['max'] as int) - (question['min'] as int) + 1,
+            max - min + 1,
             (index) {
-              final value = (question['min'] as int) + index;
+              final value = min + index;
               return _ScaleButton(
                 value: value,
-                isSelected: currentAnswer == value,
+                isSelected:
+                    currentAnswer == value || currentAnswer == value.toString(),
                 onTap: () => _saveAnswer(value),
               );
             },
@@ -324,22 +523,30 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
           ),
         );
       case 'multiple':
+        // Pour les questions à choix multiples, les options sont stockées dans un champ 'options'
+        // Si pas d'options, afficher un message
+        final options = question['options'] as List<dynamic>? ?? [];
+        if (options.isEmpty) {
+          return Text('Options non disponibles pour cette question');
+        }
         return Column(
-          children: (question['options'] as List<String>).map((option) {
+          children: options.map((option) {
             final isSelected =
-                (currentAnswer as List<String>? ?? []).contains(option);
+                (currentAnswer as String?)?.contains(option.toString()) ??
+                    false;
             return CheckboxListTile(
               value: isSelected,
               onChanged: (checked) {
-                final current = (currentAnswer ?? []).toList();
+                // Pour les questions multiples, on concatène les valeurs
+                final current = currentAnswer?.toString().split(',') ?? [];
                 if (checked == true) {
-                  current.add(option);
+                  current.add(option.toString());
                 } else {
-                  current.remove(option);
+                  current.remove(option.toString());
                 }
-                _saveAnswer(current);
+                _saveAnswer(current.join(','));
               },
-              title: Text(option),
+              title: Text(option.toString()),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -347,6 +554,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
           }).toList(),
         );
       case 'photo':
+        // TODO: Implémenter la prise de photo avec image_picker
         return Center(
           child: Column(
             children: [
@@ -360,12 +568,21 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                 ),
                 child: IconButton(
                   icon: const Icon(FontAwesomeIcons.camera, size: 48),
-                  onPressed: () {},
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Prise de photo à implémenter')),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 16),
               TextButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Galerie à implémenter')),
+                  );
+                },
                 icon: const Icon(FontAwesomeIcons.images),
                 label: const Text('Choisir depuis la galerie'),
               ),
@@ -373,7 +590,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
           ),
         );
       default:
-        return const SizedBox.shrink();
+        return Text('Type de question non supporté: $type');
     }
   }
 }
