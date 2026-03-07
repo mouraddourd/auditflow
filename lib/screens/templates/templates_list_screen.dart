@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../../powersync/service.dart';
 import 'create_template_screen.dart';
+import '../audits/create_audit_screen.dart';
 
 class TemplatesListScreen extends StatefulWidget {
   final Function(Widget)? onNavigateToPage;
@@ -16,6 +18,10 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
   String? _selectedCategory;
   String _searchQuery = '';
 
+  bool _isLoading = true;
+  String? _error;
+  List<Map<String, dynamic>> _templates = [];
+
   final List<String> _categories = [
     'Tous',
     'Qualité',
@@ -27,38 +33,93 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadTemplates();
+  }
+
+  Future<void> _loadTemplates() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      final templates = await PowerSyncService().getTemplates();
+
+      setState(() {
+        _templates = templates;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Erreur lors du chargement: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final allTemplates = List.generate(24, (index) {
-      final categories = [
-        'Qualité',
-        'Sécurité',
-        'Environnement',
-        'Hygiène',
-        'Technique',
-        'Conformité'
-      ];
-      return {
-        'title': 'Template ${index + 1}',
-        'category': categories[index % 6],
-        'questions': '${5 + index * 2} questions',
-        'description':
-            'Template d\'audit pour ${categories[index % 6].toLowerCase()}',
-      };
-    });
+    // État de chargement
+    if (_isLoading) {
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text('Chargement des templates...',
+                    style: theme.textTheme.bodyMedium),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
-    final filteredTemplates = allTemplates.where((t) {
+    // État d'erreur
+    if (_error != null) {
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(FontAwesomeIcons.triangleExclamation,
+                    size: 48, color: Colors.red),
+                const SizedBox(height: 16),
+                Text(_error!, style: theme.textTheme.bodyLarge),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _loadTemplates,
+                  child: const Text('Réessayer'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Filtrer les templates
+    final filteredTemplates = _templates.where((t) {
       final matchesCategory = _selectedCategory == null ||
           _selectedCategory == 'Tous' ||
           t['category'] == _selectedCategory;
       final matchesSearch = _searchQuery.isEmpty ||
-          (t['title'] as String)
-              .toLowerCase()
-              .contains(_searchQuery.toLowerCase()) ||
-          (t['description'] as String)
-              .toLowerCase()
-              .contains(_searchQuery.toLowerCase());
+          (t['name'] as String?)
+                  ?.toLowerCase()
+                  .contains(_searchQuery.toLowerCase()) ==
+              true ||
+          (t['description'] as String?)
+                  ?.toLowerCase()
+                  .contains(_searchQuery.toLowerCase()) ==
+              true;
       return matchesCategory && matchesSearch;
     }).toList();
 
@@ -196,20 +257,41 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
                       childAspectRatio: 1.4,
                     ),
                     delegate: SliverChildBuilderDelegate(
-                      (context, index) => _TemplateCard(
-                        title: pageTemplates[index]['title'] as String,
-                        category: pageTemplates[index]['category'] as String,
-                        questions: pageTemplates[index]['questions'] as String,
-                        description:
-                            pageTemplates[index]['description'] as String,
-                      )
-                          .animate()
-                          .fadeIn(
-                              delay: Duration(milliseconds: 300 + (index * 30)))
-                          .slideY(
-                              begin: 0.1,
-                              delay:
-                                  Duration(milliseconds: 300 + (index * 30))),
+                      (context, index) {
+                        final template = pageTemplates[index];
+                        return _TemplateCard(
+                          id: template['id'] as String? ?? '',
+                          title: template['name'] as String? ?? 'Sans nom',
+                          category: template['category'] as String? ??
+                              'Non catégorisé',
+                          questionCount:
+                              template['question_count'] as int? ?? 0,
+                          description: template['description'] as String? ?? '',
+                          onEdit: () {
+                            // TODO: Navigation vers édition de template
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text(
+                                      'Édition de template à implémenter')),
+                            );
+                          },
+                          onUse: () {
+                            // Naviguer vers CreateAudit avec ce template pré-sélectionné
+                            widget.onNavigateToPage?.call(
+                              CreateAuditScreen(
+                                  preselectedTemplateId: template['id']),
+                            );
+                          },
+                        )
+                            .animate()
+                            .fadeIn(
+                                delay:
+                                    Duration(milliseconds: 300 + (index * 30)))
+                            .slideY(
+                                begin: 0.1,
+                                delay:
+                                    Duration(milliseconds: 300 + (index * 30)));
+                      },
                       childCount: pageTemplates.length,
                     ),
                   ),
@@ -265,16 +347,22 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
 }
 
 class _TemplateCard extends StatelessWidget {
+  final String id;
   final String title;
   final String category;
-  final String questions;
+  final int questionCount;
   final String description;
+  final VoidCallback onEdit;
+  final VoidCallback onUse;
 
   const _TemplateCard({
+    required this.id,
     required this.title,
     required this.category,
-    required this.questions,
+    required this.questionCount,
     required this.description,
+    required this.onEdit,
+    required this.onUse,
   });
 
   @override
@@ -331,7 +419,7 @@ class _TemplateCard extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            questions,
+            '$questionCount question${questionCount > 1 ? 's' : ''}',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withOpacity(0.5),
               fontSize: 11,
@@ -342,7 +430,7 @@ class _TemplateCard extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {},
+                  onPressed: onEdit,
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     minimumSize: const Size(0, 32),
@@ -355,7 +443,7 @@ class _TemplateCard extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: onUse,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     minimumSize: const Size(0, 32),

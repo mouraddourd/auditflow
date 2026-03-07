@@ -11,7 +11,13 @@ import '../../powersync/service.dart';
 /// On submit, creates audit locally in SQLite which syncs to backend.
 class CreateAuditScreen extends StatefulWidget {
   final Function(Widget)? onNavigateToPage;
-  const CreateAuditScreen({super.key, this.onNavigateToPage});
+  final String? preselectedTemplateId;
+
+  const CreateAuditScreen({
+    super.key,
+    this.onNavigateToPage,
+    this.preselectedTemplateId,
+  });
 
   @override
   State<CreateAuditScreen> createState() => _CreateAuditScreenState();
@@ -48,6 +54,10 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
   @override
   void initState() {
     super.initState();
+    // Si un template est pré-sélectionné, l'utiliser directement
+    if (widget.preselectedTemplateId != null) {
+      _selectedTemplateId = widget.preselectedTemplateId;
+    }
     _loadTemplates();
   }
 
@@ -60,6 +70,17 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
       setState(() {
         _templates = templates;
         _isLoadingTemplates = false;
+        // Si un template est pré-sélectionné, charger ses données
+        if (_selectedTemplateId != null) {
+          _selectedTemplate = templates.firstWhere(
+            (t) => t['id'] == _selectedTemplateId,
+            orElse: () => <String, dynamic>{},
+          );
+          // Passer directement à l'étape 2
+          if (_selectedTemplate?.isNotEmpty == true) {
+            _loadMembers();
+          }
+        }
       });
     } catch (e) {
       debugPrint('Error loading templates: $e');
