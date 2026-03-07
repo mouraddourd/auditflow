@@ -69,12 +69,21 @@ class AuthService {
   factory AuthService() => _instance;
   AuthService._internal();
 
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: ApiConfig.baseUrl,
-    headers: {'Content-Type': 'application/json'},
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 10),
-  ));
+  Dio? _dio;
+
+  /// Gets the Dio instance, initializing with correct URL if needed
+  Future<Dio> _getDio() async {
+    if (_dio != null) return _dio!;
+
+    final baseUrl = await ApiConfig.getBaseUrl();
+    _dio = Dio(BaseOptions(
+      baseUrl: baseUrl,
+      headers: {'Content-Type': 'application/json'},
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+    ));
+    return _dio!;
+  }
 
   static const String _tokenKey = 'auth_token';
   static const String _userIdKey = 'user_id';
@@ -87,7 +96,8 @@ class AuthService {
     required String password,
   }) async {
     try {
-      final response = await _dio.post(
+      final dio = await _getDio();
+      final response = await dio.post(
         ApiConfig.login,
         data: {'email': email, 'password': password},
       );
@@ -118,7 +128,8 @@ class AuthService {
     String? name,
   }) async {
     try {
-      final response = await _dio.post(
+      final dio = await _getDio();
+      final response = await dio.post(
         ApiConfig.register,
         data: {
           'email': email,
@@ -152,7 +163,8 @@ class AuthService {
     if (token == null) return null;
 
     try {
-      final response = await _dio.get(
+      final dio = await _getDio();
+      final response = await dio.get(
         ApiConfig.me,
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
@@ -229,14 +241,16 @@ class AuthService {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        errorMessage = 'Connexion au serveur impossible. Vérifiez votre connexion.';
+        errorMessage =
+            'Connexion au serveur impossible. Vérifiez votre connexion.';
         break;
       case DioExceptionType.badResponse:
         final data = e.response?.data;
         if (data is Map && data['error'] != null) {
           errorMessage = data['error'] as String;
         } else {
-          errorMessage = 'Erreur serveur (${e.response?.statusCode ?? 'inconnu'})';
+          errorMessage =
+              'Erreur serveur (${e.response?.statusCode ?? 'inconnu'})';
         }
         break;
       case DioExceptionType.connectionError:

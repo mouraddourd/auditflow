@@ -188,8 +188,8 @@ class PowerSyncService {
     _userId = userId;
 
     try {
-      // Use centralized config
-      final powerSyncEndpoint = endpoint ?? ApiConfig.powerSyncUrl;
+      // Use centralized config (async for auto IP detection)
+      final powerSyncEndpoint = endpoint ?? await ApiConfig.getPowerSyncUrl();
 
       final connector = _AuditFlowConnector(
         endpoint: powerSyncEndpoint,
