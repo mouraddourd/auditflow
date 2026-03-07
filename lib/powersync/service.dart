@@ -188,8 +188,8 @@ class PowerSyncService {
     _userId = userId;
 
     try {
-      // Use centralized config (async for auto IP detection)
-      final powerSyncEndpoint = endpoint ?? await ApiConfig.getPowerSyncUrl();
+      // Use centralized config
+      final powerSyncEndpoint = endpoint ?? ApiConfig.powerSyncUrl;
 
       final connector = _AuditFlowConnector(
         endpoint: powerSyncEndpoint,
@@ -557,10 +557,9 @@ class _AuditFlowConnector extends PowerSyncBackendConnector {
         };
       }).toList();
 
-      // Appeler l'API backend avec http (async URL for auto IP detection)
-      final uploadUrl = await ApiConfig.getPowerSyncUploadUrl();
+      // Appeler l'API backend avec http
       final response = await http.post(
-        Uri.parse(uploadUrl),
+        Uri.parse(ApiConfig.powerSyncUpload),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

@@ -69,21 +69,12 @@ class AuthService {
   factory AuthService() => _instance;
   AuthService._internal();
 
-  Dio? _dio;
-
-  /// Gets the Dio instance, initializing with correct URL if needed
-  Future<Dio> _getDio() async {
-    if (_dio != null) return _dio!;
-
-    final baseUrl = await ApiConfig.getBaseUrl();
-    _dio = Dio(BaseOptions(
-      baseUrl: baseUrl,
-      headers: {'Content-Type': 'application/json'},
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
-    ));
-    return _dio!;
-  }
+  final Dio _dio = Dio(BaseOptions(
+    baseUrl: ApiConfig.baseUrl,
+    headers: {'Content-Type': 'application/json'},
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 10),
+  ));
 
   static const String _tokenKey = 'auth_token';
   static const String _userIdKey = 'user_id';
@@ -96,8 +87,7 @@ class AuthService {
     required String password,
   }) async {
     try {
-      final dio = await _getDio();
-      final response = await dio.post(
+      final response = await _dio.post(
         ApiConfig.login,
         data: {'email': email, 'password': password},
       );
@@ -128,8 +118,7 @@ class AuthService {
     String? name,
   }) async {
     try {
-      final dio = await _getDio();
-      final response = await dio.post(
+      final response = await _dio.post(
         ApiConfig.register,
         data: {
           'email': email,
@@ -163,8 +152,7 @@ class AuthService {
     if (token == null) return null;
 
     try {
-      final dio = await _getDio();
-      final response = await dio.get(
+      final response = await _dio.get(
         ApiConfig.me,
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );

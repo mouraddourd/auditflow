@@ -136,8 +136,7 @@ class OrganizationProvider extends ChangeNotifier {
       _dio.options.headers['x-user-id'] = userId;
       _dio.options.headers['Authorization'] = 'Bearer $token';
 
-      final orgsUrl = await ApiConfig.getOrganizationsUrl();
-      final response = await _dio.get(orgsUrl);
+      final response = await _dio.get(ApiConfig.organizations);
 
       if (response.data['success'] == true) {
         final List<dynamic> orgsData = response.data['data'] ?? [];
@@ -186,9 +185,8 @@ class OrganizationProvider extends ChangeNotifier {
       _dio.options.headers['x-user-id'] = userId;
       _dio.options.headers['Authorization'] = 'Bearer $token';
 
-      final orgsUrl = await ApiConfig.getOrganizationsUrl();
       final response = await _dio.post(
-        orgsUrl,
+        ApiConfig.organizations,
         data: {'name': name},
       );
 
@@ -227,9 +225,8 @@ class OrganizationProvider extends ChangeNotifier {
       _dio.options.headers['x-user-id'] = userId;
       _dio.options.headers['Authorization'] = 'Bearer $authToken';
 
-      final joinUrl = await ApiConfig.getOrganizationsUrl();
       final response = await _dio.post(
-        '$joinUrl/join/$token',
+        '${ApiConfig.organizations}/join/$token',
       );
 
       if (response.data['success'] == true) {
@@ -276,9 +273,8 @@ class OrganizationProvider extends ChangeNotifier {
       _dio.options.headers['x-user-id'] = userId;
       _dio.options.headers['Authorization'] = 'Bearer $token';
 
-      final orgsUrl = await ApiConfig.getOrganizationsUrl();
       final response = await _dio.post(
-        '$orgsUrl/${_activeOrganization!.id}/invite',
+        '${ApiConfig.organizations}/${_activeOrganization!.id}/invite',
         data: {'email': email},
       );
 
