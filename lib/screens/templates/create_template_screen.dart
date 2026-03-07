@@ -85,7 +85,7 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context);
+        Navigator.pop(context, true); // Signal success
       }
     } catch (e) {
       setState(() {

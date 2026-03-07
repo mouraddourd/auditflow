@@ -337,8 +337,13 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          widget.onNavigateToPage?.call(const CreateTemplateScreen());
+        onPressed: () async {
+          final result =
+              await widget.onNavigateToPage?.call(const CreateTemplateScreen());
+          // Rafraîchir si template créé avec succès
+          if (result == true) {
+            _loadTemplates();
+          }
         },
         icon: const Icon(FontAwesomeIcons.plus),
         label: const Text('Nouveau template'),
