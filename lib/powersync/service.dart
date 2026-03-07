@@ -339,7 +339,12 @@ class PowerSyncService {
   }
 
   /// Met à jour le statut d'un audit
-  Future<void> updateAuditStatus(String auditId, String status) async {
+  ///
+  /// [auditId] ID de l'audit à mettre à jour
+  /// [status] Nouveau statut: 'draft', 'in_progress', 'completed'
+  /// [score] Score final (optionnel, calculé à la fin de l'audit)
+  Future<void> updateAuditStatus(String auditId, String status,
+      {int? score}) async {
     if (_userId == null) throw StateError('User not authenticated');
 
     final now = DateTime.now().toIso8601String();
@@ -358,12 +363,14 @@ class PowerSyncService {
       SET status = ?, 
           ${startedAt != null ? 'started_at = ?,' : ''}
           ${completedAt != null ? 'completed_at = ?,' : ''}
+          ${score != null ? 'score = ?,' : ''}
           updated_at = ?
       WHERE id = ? AND user_id = ?
     ''', [
       status,
       if (startedAt != null) startedAt,
       if (completedAt != null) completedAt,
+      if (score != null) score,
       now,
       auditId,
       _userId,
