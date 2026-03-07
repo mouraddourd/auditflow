@@ -115,17 +115,23 @@ class ApiConfig {
   static String get baseUrl => 'http://localhost:3000';
   static String get powerSyncUrl => 'ws://localhost:8080';
 
-  // Auth endpoints
+  // Async endpoint getters that use auto-detected IP
+  static Future<String> getLoginUrl() async =>
+      '${await getBaseUrl()}/auth/login';
+  static Future<String> getRegisterUrl() async =>
+      '${await getBaseUrl()}/auth/register';
+  static Future<String> getMeUrl() async => '${await getBaseUrl()}/auth/me';
+  static Future<String> getOrganizationsUrl() async =>
+      '${await getBaseUrl()}/organizations';
+  static Future<String> getPowerSyncUploadUrl() async =>
+      '${await getBaseUrl()}/powersync/upload';
+  static Future<String> getHealthUrl() async => '${await getBaseUrl()}/health';
+
+  // Sync getters (deprecated - use async versions for Android physical devices)
   static String get login => '$baseUrl/auth/login';
   static String get register => '$baseUrl/auth/register';
   static String get me => '$baseUrl/auth/me';
-
-  // Organization endpoints
   static String get organizations => '$baseUrl/organizations';
-
-  // PowerSync endpoints
   static String get powerSyncUpload => '$baseUrl/powersync/upload';
-
-  // Health check
   static String get health => '$baseUrl/health';
 }

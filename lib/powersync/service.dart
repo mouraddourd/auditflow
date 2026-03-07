@@ -557,9 +557,10 @@ class _AuditFlowConnector extends PowerSyncBackendConnector {
         };
       }).toList();
 
-      // Appeler l'API backend avec http
+      // Appeler l'API backend avec http (async URL for auto IP detection)
+      final uploadUrl = await ApiConfig.getPowerSyncUploadUrl();
       final response = await http.post(
-        Uri.parse(ApiConfig.powerSyncUpload),
+        Uri.parse(uploadUrl),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
