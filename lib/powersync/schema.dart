@@ -1,5 +1,3 @@
-import 'package:powersync/powersync.dart';
-
 /// Schéma SQLite local pour PowerSync
 /// Synchronisé avec PostgreSQL via PowerSync Service
 class PowerSyncSchema {

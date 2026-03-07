@@ -331,7 +331,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
             return CheckboxListTile(
               value: isSelected,
               onChanged: (checked) {
-                final current = (currentAnswer as List<String>? ?? []).toList();
+                final current = (currentAnswer ?? []).toList();
                 if (checked == true) {
                   current.add(option);
                 } else {

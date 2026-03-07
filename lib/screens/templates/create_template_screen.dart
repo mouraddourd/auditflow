@@ -350,7 +350,7 @@ class _AddQuestionDialogState extends State<_AddQuestionDialog> {
                 title: Text(type['label'] as String),
                 secondary: Icon(type['icon'] as IconData),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),
