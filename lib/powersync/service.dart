@@ -298,6 +298,91 @@ class PowerSyncService {
     return audit;
   }
 
+  /// Récupère les résultats d'un audit avec scores par catégorie et problèmes
+  ///
+  /// Retourne:
+  /// - audit: données de l'audit
+  /// - categoryScores: map catégorie -> score moyen
+  /// - issues: liste des réponses non conformes
+  Future<Map<String, dynamic>> getAuditResults(String auditId) async {
+    final audit = await getAuditById(auditId);
+    if (audit == null) {
+      return {'audit': null, 'categoryScores': <String, int>{}, 'issues': []};
+    }
+
+    // Récupérer les questions du template avec leurs catégories
+    final templateId = audit['template_id'] as String;
+    final questions = await db.getAll(
+      'SELECT id, text, type, category FROM questions WHERE template_id = ?',
+      [templateId],
+    );
+
+    // Map questionId -> question data
+    final questionMap = <String, Map<String, dynamic>>{};
+    for (final q in questions) {
+      questionMap[q['id'] as String] = q;
+    }
+
+    // Calculer les scores par catégorie
+    final categoryScores = <String, List<int>>{};
+    final issues = <Map<String, dynamic>>[];
+
+    for (final answer in audit['answers'] as List<dynamic>) {
+      final questionId = answer['question_id'] as String;
+      final question = questionMap[questionId];
+      if (question == null) continue;
+
+      final category = question['category'] as String? ?? 'Général';
+      final type = question['type'] as String?;
+      final value = answer['value'] as String?;
+
+      int? score;
+      bool isIssue = false;
+
+      if (type == 'yes_no') {
+        // yes_no: true = 100, false = 0
+        score = value == 'true' ? 100 : 0;
+        isIssue = value == 'false';
+      } else if (type == 'scale') {
+        // scale: normaliser sur 100 (suppose min=1, max=5)
+        final scaleValue = int.tryParse(value ?? '') ?? 0;
+        if (scaleValue > 0) {
+          score = ((scaleValue - 1) / 4 * 100).round();
+          isIssue = scaleValue < 3;
+        }
+      }
+
+      if (score != null) {
+        categoryScores.putIfAbsent(category, () => []);
+        categoryScores[category]!.add(score);
+      }
+
+      if (isIssue) {
+        issues.add({
+          'question': question['text'] as String? ?? 'Question',
+          'category': category,
+          'value': value,
+          'comment': answer['comment'] as String?,
+        });
+      }
+    }
+
+    // Calculer moyenne par catégorie
+    final avgCategoryScores = <String, int>{};
+    categoryScores.forEach((category, scores) {
+      if (scores.isNotEmpty) {
+        avgCategoryScores[category] =
+            (scores.reduce((a, b) => a + b) / scores.length).round();
+      }
+    });
+
+    return {
+      'audit': audit,
+      'categoryScores': avgCategoryScores,
+      'issues': issues,
+    };
+  }
+
   /// Crée un nouvel audit (écriture locale + sync)
   Future<Map<String, dynamic>> createAudit({
     required String title,
