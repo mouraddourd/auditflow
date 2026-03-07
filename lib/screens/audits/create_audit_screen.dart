@@ -131,7 +131,7 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
         templateId: _selectedTemplateId!,
       );
 
-      if (mounted) Navigator.pop(context);
+      if (mounted) Navigator.pop(context, true); // Signal success
     } catch (e) {
       debugPrint('Error creating audit: $e');
       setState(() {
