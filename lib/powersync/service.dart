@@ -561,21 +561,15 @@ class PowerSyncService {
       final questionId = _generateId();
 
       await db.execute('''
-        INSERT INTO questions (id, template_id, type, text, category, "order", required, options, min, max, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO questions (id, template_id, type, text, "order", required, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ''', [
         questionId,
         id,
         question['type'] as String? ?? 'text',
         question['text'] as String? ?? '',
-        question['category'] as String? ?? category,
         i + 1, // order (1-indexed)
         question['required'] as bool? ?? false ? 1 : 0,
-        question['options'] != null
-            ? (question['options'] as List).join('|')
-            : null,
-        question['min'] as int?,
-        question['max'] as int?,
         now,
         now,
       ]);
