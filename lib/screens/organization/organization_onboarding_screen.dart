@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/config/responsive_config.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -18,10 +19,12 @@ class OrganizationOnboardingScreen extends StatefulWidget {
   });
 
   @override
-  State<OrganizationOnboardingScreen> createState() => _OrganizationOnboardingScreenState();
+  State<OrganizationOnboardingScreen> createState() =>
+      _OrganizationOnboardingScreenState();
 }
 
-class _OrganizationOnboardingScreenState extends State<OrganizationOnboardingScreen> {
+class _OrganizationOnboardingScreenState
+    extends State<OrganizationOnboardingScreen> {
   final _nameController = TextEditingController();
   final _inviteTokenController = TextEditingController();
   bool _isCreating = false;
@@ -74,21 +77,11 @@ class _OrganizationOnboardingScreenState extends State<OrganizationOnboardingScr
       _error = null;
     });
 
-    final orgProvider = context.read<OrganizationProvider>();
-    final org = await orgProvider.joinOrganization(
-      _inviteTokenController.text.trim(),
-      widget.userId,
-      widget.token,
-    );
-
-    if (org != null) {
-      widget.onComplete();
-    } else {
-      setState(() {
-        _isJoining = false;
-        _error = orgProvider.error ?? 'Token invalide ou expiré';
-      });
-    }
+    // TODO: Implémenter la fonctionnalité de rejoindre une organisation
+    setState(() {
+      _isJoining = false;
+      _error = 'Fonctionnalité non implémentée';
+    });
   }
 
   @override
@@ -118,7 +111,7 @@ class _OrganizationOnboardingScreenState extends State<OrganizationOnboardingScr
             ),
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 500),
                   child: Container(
@@ -153,7 +146,10 @@ class _OrganizationOnboardingScreenState extends State<OrganizationOnboardingScr
                               color: Colors.white,
                             ),
                           ),
-                        ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.3),
+                        )
+                            .animate()
+                            .fadeIn(duration: 600.ms)
+                            .slideY(begin: -0.3),
                         const SizedBox(height: 8),
                         Text(
                           'Bienvenue ! Créez ou rejoignez une organisation',
@@ -177,7 +173,8 @@ class _OrganizationOnboardingScreenState extends State<OrganizationOnboardingScr
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                                const Icon(Icons.error_outline,
+                                    color: Colors.red, size: 20),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
@@ -235,7 +232,9 @@ class _OrganizationOnboardingScreenState extends State<OrganizationOnboardingScr
                                 controller: _nameController,
                                 decoration: InputDecoration(
                                   labelText: 'Nom de l\'organisation',
-                                  prefixIcon: const Icon(FontAwesomeIcons.briefcase, size: 18),
+                                  prefixIcon: const Icon(
+                                      FontAwesomeIcons.briefcase,
+                                      size: 18),
                                   filled: true,
                                   fillColor: theme.brightness == Brightness.dark
                                       ? Colors.white.withOpacity(0.05)
@@ -250,9 +249,11 @@ class _OrganizationOnboardingScreenState extends State<OrganizationOnboardingScr
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
-                                  onPressed: _isCreating ? null : _createOrganization,
+                                  onPressed:
+                                      _isCreating ? null : _createOrganization,
                                   style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 14),
                                     backgroundColor: theme.colorScheme.primary,
                                     foregroundColor: Colors.white,
                                     shape: RoundedRectangleBorder(
@@ -288,7 +289,8 @@ class _OrganizationOnboardingScreenState extends State<OrganizationOnboardingScr
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
                               child: Text(
                                 'ou',
                                 style: TextStyle(
@@ -314,10 +316,12 @@ class _OrganizationOnboardingScreenState extends State<OrganizationOnboardingScr
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.secondary.withOpacity(0.05),
+                            color:
+                                theme.colorScheme.secondary.withOpacity(0.05),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: theme.colorScheme.secondary.withOpacity(0.2),
+                              color:
+                                  theme.colorScheme.secondary.withOpacity(0.2),
                             ),
                           ),
                           child: Column(
@@ -356,7 +360,8 @@ class _OrganizationOnboardingScreenState extends State<OrganizationOnboardingScr
                                 controller: _inviteTokenController,
                                 decoration: InputDecoration(
                                   labelText: 'Token d\'invitation',
-                                  prefixIcon: const Icon(FontAwesomeIcons.key, size: 18),
+                                  prefixIcon: const Icon(FontAwesomeIcons.key,
+                                      size: 18),
                                   filled: true,
                                   fillColor: theme.brightness == Brightness.dark
                                       ? Colors.white.withOpacity(0.05)
@@ -371,11 +376,15 @@ class _OrganizationOnboardingScreenState extends State<OrganizationOnboardingScr
                               SizedBox(
                                 width: double.infinity,
                                 child: OutlinedButton(
-                                  onPressed: _isJoining ? null : _joinOrganization,
+                                  onPressed:
+                                      _isJoining ? null : _joinOrganization,
                                   style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                    side: BorderSide(color: theme.colorScheme.secondary),
-                                    foregroundColor: theme.colorScheme.secondary,
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 14),
+                                    side: BorderSide(
+                                        color: theme.colorScheme.secondary),
+                                    foregroundColor:
+                                        theme.colorScheme.secondary,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),

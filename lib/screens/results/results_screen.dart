@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/config/responsive_config.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../hive/service.dart';
 import 'package:intl/intl.dart';
@@ -176,7 +177,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -219,7 +220,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
             const SizedBox(height: 24),
             // Score card
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -515,3 +516,5 @@ class _IssueCard extends StatelessWidget {
     );
   }
 }
+
+

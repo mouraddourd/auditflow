@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/config/responsive_config.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 /// Error screen shown when app initialization fails.
@@ -45,7 +46,7 @@ class InitErrorScreen extends StatelessWidget {
                 children: [
                   // Error icon
                   Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
                     decoration: BoxDecoration(
                       color: Colors.red.withOpacity(0.1),
                       shape: BoxShape.circle,
@@ -153,3 +154,5 @@ class InitErrorScreen extends StatelessWidget {
     );
   }
 }
+
+

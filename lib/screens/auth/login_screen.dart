@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/config/responsive_config.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../core/widgets/theme_toggle_button.dart';
@@ -98,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 420),
                   child: Container(
@@ -414,3 +415,5 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+
+

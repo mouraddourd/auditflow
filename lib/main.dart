@@ -164,20 +164,40 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   /// Check if user is already authenticated on app start
   Future<void> _checkExistingAuth() async {
-    final isAuthenticated = await _authService.isAuthenticated();
-    if (isAuthenticated) {
-      final userId = await _authService.getUserId();
-      final token = await _authService.getToken();
-      if (userId != null && token != null) {
-        _hiveService.setUser(userId);
-        setState(() {
-          _isLoggedIn = true;
-          _userId = userId;
-          _token = token;
-        });
+    // Set a maximum time for auth check to prevent infinite loading
+    bool completed = false;
+
+    // Start auth check
+    _authService.isAuthenticated().then((isAuthenticated) async {
+      if (completed) return; // Already timed out
+      completed = true;
+
+      if (isAuthenticated) {
+        final userId = await _authService.getUserId();
+        final token = await _authService.getToken();
+        if (userId != null && token != null) {
+          _hiveService.setUser(userId);
+          if (mounted) {
+            setState(() {
+              _isLoggedIn = true;
+              _userId = userId;
+              _token = token;
+            });
+          }
+        }
       }
+      if (mounted) setState(() => _isCheckingAuth = false);
+    }).catchError((e) {
+      debugPrint('Auth check failed: $e');
+      if (mounted) setState(() => _isCheckingAuth = false);
+    });
+
+    // Timeout after 3 seconds - force show login
+    await Future.delayed(const Duration(seconds: 3));
+    if (!completed && mounted) {
+      completed = true;
+      setState(() => _isCheckingAuth = false);
     }
-    setState(() => _isCheckingAuth = false);
   }
 
   void _login(String userId, String token,
@@ -214,10 +234,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
   Widget build(BuildContext context) {
     // Show loading while checking existing auth
     if (_isCheckingAuth) {
-      return const MaterialApp(
+      return MaterialApp(
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
         home: Scaffold(
           body: Center(
-            child: CircularProgressIndicator(),
+            child: CircularProgressIndicator(
+              color: Colors.blue,
+            ),
           ),
         ),
       );

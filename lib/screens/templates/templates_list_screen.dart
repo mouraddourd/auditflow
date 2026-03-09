@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/config/responsive_config.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../hive/service.dart';
@@ -148,7 +149,8 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding:
+                        EdgeInsets.all(ResponsiveConfig.getPadding(context)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -249,13 +251,16 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
                   ),
                 ),
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: ResponsiveConfig.getPadding(context),
+                  ),
                   sliver: SliverGrid(
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: crossAxisCount,
                       mainAxisSpacing: 8,
                       crossAxisSpacing: 8,
-                      childAspectRatio: 1.4,
+                      childAspectRatio:
+                          ResponsiveConfig.isMobile(context) ? 0.85 : 1.4,
                     ),
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
@@ -278,8 +283,9 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
                               ),
                             ).then((_) => _loadTemplates());
                           },
-                          onUse: () {
+                          onUse: () async {
                             // Naviguer vers CreateAudit avec ce template pré-sélectionné
+                            // Le rafraîchissement se fait automatiquement dans CreateAuditScreen via WidgetsBindingObserver
                             widget.onNavigateToPage?.call(
                               CreateAuditScreen(
                                   preselectedTemplateId: template['id']),
@@ -302,7 +308,8 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
                 if (filteredTemplates.length > itemsPerPage)
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.all(24),
+                      padding:
+                          EdgeInsets.all(ResponsiveConfig.getPadding(context)),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

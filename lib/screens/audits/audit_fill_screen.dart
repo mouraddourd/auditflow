@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/config/responsive_config.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../hive/service.dart';
 import '../results/results_screen.dart';
@@ -338,7 +339,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
           ),
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
               itemCount: _questions.length,
               itemBuilder: (context, index) {
                 final question = _questions[index];
@@ -416,7 +417,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
             ),
           ),
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
             decoration: BoxDecoration(
               color: theme.cardTheme.color,
               border: Border(
@@ -675,7 +676,7 @@ class _ChoiceButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
         decoration: BoxDecoration(
           color: isSelected ? color.withOpacity(0.2) : Colors.grey[800],
           borderRadius: BorderRadius.circular(12),
@@ -745,3 +746,5 @@ class _ScaleButton extends StatelessWidget {
     );
   }
 }
+
+

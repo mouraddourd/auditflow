@@ -43,7 +43,14 @@ router.post('/', async (req: Request, res: Response) => {
       userId,
     });
 
-    res.status(201).json({ success: true, data: organization });
+    // Return organization with userRole
+    res.status(201).json({
+      success: true,
+      data: {
+        ...organization,
+        userRole: 'owner',
+      },
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.status(400).json({ success: false, error: message });

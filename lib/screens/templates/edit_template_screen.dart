@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../core/config/responsive_config.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../hive/service.dart';
+import '../../core/widgets/question_dialog.dart';
 
 class EditTemplateScreen extends StatefulWidget {
   final String templateId;
@@ -74,12 +76,11 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
   void _addQuestion() {
     showDialog(
       context: context,
-      builder: (context) => _AddQuestionDialog(
+      builder: (context) => QuestionDialog(
         onAdd: (question) {
           setState(() {
             _questions.add(question);
           });
-          Navigator.pop(context);
         },
       ),
     );
@@ -89,6 +90,24 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
     setState(() {
       _questions.removeAt(index);
     });
+  }
+
+  void _editQuestion(int index) {
+    final question = _questions[index];
+    showDialog(
+      context: context,
+      builder: (dialogContext) => QuestionDialog(
+        initialQuestion: question,
+        onAdd: (updatedQuestion) {
+          setState(() {
+            _questions[index] = {
+              ...updatedQuestion,
+              'id': question['id'],
+            };
+          });
+        },
+      ),
+    );
   }
 
   Future<void> _saveTemplate() async {
@@ -165,27 +184,26 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Modifier le template'),
+        title: const Text('Modifier'),
         leading: IconButton(
           icon: const Icon(FontAwesomeIcons.arrowLeft),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          TextButton.icon(
+          IconButton(
             onPressed: _isSaving ? null : _saveTemplate,
             icon: _isSaving
                 ? const SizedBox(
-                    width: 16,
-                    height: 16,
+                    width: 20,
+                    height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(FontAwesomeIcons.floppyDisk, size: 18),
-            label: const Text('Enregistrer'),
+                : const Icon(FontAwesomeIcons.floppyDisk),
           ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -273,7 +291,7 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
 
             if (_questions.isEmpty)
               Container(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
                 decoration: BoxDecoration(
                   color: theme.cardTheme.color,
                   borderRadius: BorderRadius.circular(12),
@@ -331,6 +349,14 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
                           ),
                         ),
                         IconButton(
+                          onPressed: () => _editQuestion(index),
+                          icon: Icon(
+                            FontAwesomeIcons.pen,
+                            size: 16,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                        IconButton(
                           onPressed: () => _removeQuestion(index),
                           icon: Icon(
                             FontAwesomeIcons.trash,
@@ -374,80 +400,6 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _AddQuestionDialog extends StatefulWidget {
-  final Function(Map<String, dynamic>) onAdd;
-
-  const _AddQuestionDialog({required this.onAdd});
-
-  @override
-  State<_AddQuestionDialog> createState() => _AddQuestionDialogState();
-}
-
-class _AddQuestionDialogState extends State<_AddQuestionDialog> {
-  final _questionController = TextEditingController();
-  String _questionType = 'text';
-
-  @override
-  void dispose() {
-    _questionController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Nouvelle question'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _questionController,
-            decoration: const InputDecoration(
-              labelText: 'Question',
-              hintText: 'Ex: Les extincteurs sont-ils accessibles?',
-            ),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            value: _questionType,
-            decoration: const InputDecoration(labelText: 'Type de réponse'),
-            items: const [
-              DropdownMenuItem(value: 'text', child: Text('Texte libre')),
-              DropdownMenuItem(
-                  value: 'yes_no', child: Text('Oui/Non (Conforme)')),
-              DropdownMenuItem(value: 'number', child: Text('Nombre')),
-              DropdownMenuItem(value: 'scale', child: Text('Échelle (1-5)')),
-              DropdownMenuItem(
-                  value: 'multiple', child: Text('Choix multiples')),
-              DropdownMenuItem(value: 'photo', child: Text('Photo')),
-              DropdownMenuItem(value: 'date', child: Text('Date')),
-            ],
-            onChanged: (value) {
-              setState(() => _questionType = value!);
-            },
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Annuler'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            if (_questionController.text.trim().isEmpty) return;
-            widget.onAdd({
-              'text': _questionController.text.trim(),
-              'type': _questionType,
-            });
-          },
-          child: const Text('Ajouter'),
-        ),
-      ],
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
+import 'package:dio/dio.dart';
+import '../../core/config/api_config.dart';
 import '../../hive/service.dart';
 
 class Organization {
@@ -179,33 +180,42 @@ class OrganizationProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final id = const Uuid().v4();
-      final now = DateTime.now().toIso8601String();
-      final slug = name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-');
-
-      final org = Organization(
-        id: id,
-        name: name,
-        slug: slug,
-        licenseTier: 'free',
-        createdAt: now,
-        updatedAt: now,
-        userRole: 'owner',
+      // Create organization via API
+      final response = await Dio().post(
+        ApiConfig.organizations,
+        data: {'name': name},
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': userId,
+          },
+        ),
       );
 
-      final hiveService = HiveService();
-      await hiveService.saveOrganization(org.toJson());
+      if (response.statusCode == 201 && response.data['success'] == true) {
+        final orgData = response.data['data'] as Map<String, dynamic>;
+        final org = Organization.fromJson(orgData);
 
-      _organizations.insert(0, org);
-      _activeOrganization = org;
+        // Save to Hive
+        final hiveService = HiveService();
+        await hiveService.saveOrganization(org.toJson());
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_activeOrgKey, org.id);
+        _organizations.insert(0, org);
+        _activeOrganization = org;
 
-      hiveService.setOrganization(org.id);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_activeOrgKey, org.id);
 
-      notifyListeners();
-      return org;
+        hiveService.setOrganization(org.id);
+
+        notifyListeners();
+        return org;
+      } else {
+        _error = response.data['error'] ?? 'Erreur lors de la création';
+      }
+    } on DioException catch (e) {
+      _error = e.response?.data?['error'] ?? 'Erreur de connexion';
+      debugPrint('Error creating organization: ${e.message}');
     } catch (e) {
       _error = e.toString();
       debugPrint('Error creating organization: $e');
@@ -213,11 +223,6 @@ class OrganizationProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
-    return null;
-  }
-
-  Future<Organization?> joinOrganization(
-      String token, String userId, String authToken) async {
     return null;
   }
 
@@ -229,10 +234,6 @@ class OrganizationProvider extends ChangeNotifier {
     HiveService().setOrganization(org.id);
 
     notifyListeners();
-  }
-
-  Future<bool> inviteMember(String email, String userId, String token) async {
-    return false;
   }
 
   Future<void> clear() async {

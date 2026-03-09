@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' show Platform;
 
 class ApiConfig {
   ApiConfig._();
@@ -6,10 +7,18 @@ class ApiConfig {
   static String get baseUrl {
     const url = String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'http://192.168.1.1:3000',
+      defaultValue: 'http://localhost:3000',
     );
-    if (Platform.isAndroid && url.contains('localhost')) {
-      return url.replaceAll('localhost', '10.0.2.2');
+    // Sur Android, localhost doit être remplacé par 10.0.2.2
+    // Sur web, on garde localhost tel quel
+    if (!kIsWeb) {
+      try {
+        if (Platform.isAndroid && url.contains('localhost')) {
+          return url.replaceAll('localhost', '10.0.2.2');
+        }
+      } catch (_) {
+        // Platform peut ne pas être disponible sur certaines plateformes
+      }
     }
     return url;
   }

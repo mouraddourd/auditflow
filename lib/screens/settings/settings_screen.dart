@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/config/responsive_config.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -102,7 +103,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -226,7 +227,7 @@ class _ProfilePage extends StatelessWidget {
         title: const Text('Profil'),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
         child: Column(
           children: [
             CircleAvatar(
@@ -302,7 +303,7 @@ class _SecurityPage extends StatelessWidget {
         title: const Text('Sécurité'),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -619,11 +620,11 @@ class _SubscriptionPage extends StatelessWidget {
         title: const Text('Abonnement'),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -692,3 +693,5 @@ class _SubscriptionPage extends StatelessWidget {
     );
   }
 }
+
+

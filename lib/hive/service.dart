@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -65,6 +64,32 @@ class HiveService {
     final org = box.get(id);
     if (org == null) return null;
     return Map<String, dynamic>.from(org);
+  }
+
+  Future<void> updateOrganization(String id, {String? name}) async {
+    final box = Hive.box(organizationsBox);
+    final org = box.get(id);
+    if (org == null) return;
+
+    final updated = Map<String, dynamic>.from(org);
+    if (name != null) updated['name'] = name;
+    updated['updated_at'] = DateTime.now().toIso8601String();
+
+    await box.put(id, updated);
+  }
+
+  Future<void> deleteOrganization(String orgId) async {
+    final box = Hive.box(organizationsBox);
+    await box.delete(orgId);
+
+    // Cascade: supprimer les membres de cette organisation
+    final membersBox = Hive.box(organizationMembersBox);
+    final membersToDelete = membersBox.keys
+        .where((k) => membersBox.get(k)?['organization_id'] == orgId)
+        .toList();
+    for (final mId in membersToDelete) {
+      await membersBox.delete(mId);
+    }
   }
 
   // Templates
@@ -169,7 +194,7 @@ class HiveService {
       final question = questions[i];
       final questionId = _generateId();
 
-      await questionsBoxInstance.put(questionId, {
+      final questionData = {
         'id': questionId,
         'template_id': id,
         'type': question['type'] ?? 'text',
@@ -178,30 +203,42 @@ class HiveService {
         'required': question['required'] == true ? 1 : 0,
         'options': question['options'], // Pour les questions de type multiple
         'created_at': now,
-      });
+      };
+
+      await questionsBoxInstance.put(questionId, questionData);
     }
+  }
+
+  Future<void> deleteTemplate(String templateId) async {
+    // Supprimer les questions associées
+    final questionsBoxInstance = Hive.box(questionsBox);
+    final questionsToDelete = questionsBoxInstance.values
+        .where((q) => q['template_id'] == templateId)
+        .map((q) => q['id'] as String)
+        .toList();
+    for (final qId in questionsToDelete) {
+      await questionsBoxInstance.delete(qId);
+    }
+
+    // Supprimer le template
+    final box = Hive.box(templatesBox);
+    await box.delete(templateId);
   }
 
   Map<String, dynamic>? getTemplateById(String templateId) {
     final box = Hive.box(templatesBox);
     final template = box.get(templateId);
     if (template == null) {
-      debugPrint('Template not found: $templateId');
       return null;
     }
 
     final result = Map<String, dynamic>.from(template);
 
     final questionsBoxInstance = Hive.box(questionsBox);
-    final allQuestions = questionsBoxInstance.values.toList();
-    debugPrint('All questions in box: ${allQuestions.length}');
-    debugPrint('Looking for questions with template_id: $templateId');
-
     final questions = questionsBoxInstance.values
         .where((q) => q['template_id'] == templateId)
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
-    debugPrint('Found ${questions.length} questions for template $templateId');
 
     questions.sort((a, b) => (a['order'] as int).compareTo(b['order'] as int));
 
@@ -223,8 +260,6 @@ class HiveService {
 
     // Dupliquer la template pour cet audit
     final originalTemplate = Hive.box(templatesBox).get(templateId);
-    debugPrint(
-        'createAudit: templateId=$templateId, originalTemplate=${originalTemplate != null}');
 
     String? auditTemplateId;
     if (originalTemplate != null) {
@@ -238,34 +273,21 @@ class HiveService {
       copiedTemplate['updated_at'] = now;
 
       await Hive.box(templatesBox).put(auditTemplateId, copiedTemplate);
-      debugPrint('createAudit: Created template copy with id=$auditTemplateId');
 
       // Dupliquer les questions de la template
       final questionsBoxInstance = Hive.box(questionsBox);
-      final allQuestions = questionsBoxInstance.values.toList();
-      debugPrint('createAudit: Total questions in box: ${allQuestions.length}');
-
-      final originalQuestions = allQuestions.where((q) {
-        final qTemplateId = q['template_id'] as String?;
-        debugPrint(
-            'createAudit: Question ${q['id']} has template_id=$qTemplateId');
-        return qTemplateId == templateId;
-      }).toList();
-
-      debugPrint(
-          'createAudit: Found ${originalQuestions.length} questions to copy from template $templateId');
+      final originalQuestions = questionsBoxInstance.values
+          .where((q) => q['template_id'] == templateId)
+          .toList();
 
       for (final q in originalQuestions) {
         final questionCopy = Map<String, dynamic>.from(q);
         final newQuestionId = _generateId();
-        final originalQuestionId = q['id'] as String;
 
         questionCopy['id'] = newQuestionId;
         questionCopy['template_id'] = auditTemplateId;
         questionCopy['created_at'] = now;
         await questionsBoxInstance.put(newQuestionId, questionCopy);
-        debugPrint(
-            'createAudit: Copied question $originalQuestionId -> $newQuestionId');
       }
     }
 
@@ -445,6 +467,34 @@ class HiveService {
         'updated_at': now,
       });
     }
+  }
+
+  Map<String, dynamic>? getAnswer(String auditId, String questionId) {
+    final box = Hive.box(answersBox);
+    final answer = box.values.firstWhere(
+      (a) => a['audit_id'] == auditId && a['question_id'] == questionId,
+      orElse: () => null,
+    );
+    return answer != null ? Map<String, dynamic>.from(answer) : null;
+  }
+
+  List<Map<String, dynamic>> getAnswersForAudit(String auditId) {
+    final box = Hive.box(answersBox);
+    return box.values
+        .where((a) => a['audit_id'] == auditId)
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
+  Future<void> deleteAnswer(String auditId, String questionId) async {
+    final box = Hive.box(answersBox);
+    final key = box.keys.firstWhere(
+      (k) =>
+          box.get(k)?['audit_id'] == auditId &&
+          box.get(k)?['question_id'] == questionId,
+      orElse: () => null,
+    );
+    if (key != null) await box.delete(key);
   }
 
   // Stats

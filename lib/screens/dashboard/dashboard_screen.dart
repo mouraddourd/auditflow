@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../hive/service.dart';
+import '../../core/config/responsive_config.dart';
 import '../audits/create_audit_screen.dart';
 import '../audits/audit_fill_screen.dart';
 import '../results/results_screen.dart';
@@ -75,7 +76,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -357,7 +358,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     builder: (_) => ResultsScreen(
                                         auditId: audit['id'] as String),
                                   ),
-                                );
+                                ).then((_) => _loadStats());
                               } else {
                                 Navigator.push(
                                   context,
@@ -370,7 +371,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                           audit['title'] as String? ?? 'Audit',
                                     ),
                                   ),
-                                );
+                                ).then((_) => _loadStats());
                               }
                             },
                             child: _AuditCard(
@@ -405,9 +406,10 @@ class _DashboardScreenState extends State<DashboardScreen>
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          widget.onNavigateToPage?.call(
+        onPressed: () async {
+          await widget.onNavigateToPage?.call(
               CreateAuditScreen(onNavigateToPage: widget.onNavigateToPage));
+          _loadStats();
         },
         icon: const Icon(FontAwesomeIcons.plus),
         label: const Text('Nouvel audit'),
@@ -508,7 +510,6 @@ class _AuditCard extends StatelessWidget {
   final String date;
   final String auditId;
   final String templateId;
-  final VoidCallback? onTap;
 
   const _AuditCard({
     required this.title,
@@ -600,3 +601,4 @@ class _AuditCard extends StatelessWidget {
     return Colors.red;
   }
 }
+

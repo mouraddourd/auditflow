@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/config/responsive_config.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../hive/service.dart';
 import 'audit_fill_screen.dart';
@@ -24,7 +25,8 @@ class CreateAuditScreen extends StatefulWidget {
   State<CreateAuditScreen> createState() => _CreateAuditScreenState();
 }
 
-class _CreateAuditScreenState extends State<CreateAuditScreen> {
+class _CreateAuditScreenState extends State<CreateAuditScreen>
+    with WidgetsBindingObserver {
   /// Selected template ID (null = step 1, otherwise step 2)
   String? _selectedTemplateId;
 
@@ -55,6 +57,7 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Si un template est pré-sélectionné, l'utiliser directement
     if (widget.preselectedTemplateId != null) {
       _selectedTemplateId = widget.preselectedTemplateId;
@@ -191,9 +194,18 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Rafraîchir les templates quand l'app revient au premier plan
+    if (state == AppLifecycleState.resumed) {
+      _loadTemplates();
+    }
   }
 
   @override
@@ -209,7 +221,7 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

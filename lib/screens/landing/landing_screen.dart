@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/config/responsive_config.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class LandingScreen extends StatelessWidget {
@@ -34,7 +35,7 @@ class LandingScreen extends StatelessWidget {
                 children: [
                   // Navbar
                   Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -428,7 +429,7 @@ class _FeatureCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       width: width,
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
       decoration: BoxDecoration(
         color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(16),
@@ -469,3 +470,5 @@ class _FeatureCard extends StatelessWidget {
     );
   }
 }
+
+
