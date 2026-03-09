@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../powersync/service.dart';
+import '../../hive/service.dart';
+import '../results/results_screen.dart';
 
-/// Écran de remplissage d'audit avec questions chargées depuis PowerSync.
+/// Écran de remplissage d'audit avec questions chargées depuis Hive.
 ///
 /// Reçoit auditId et templateId en paramètres de navigation.
 /// Les questions sont chargées via getTemplateById() et les réponses
@@ -24,8 +25,9 @@ class AuditFillScreen extends StatefulWidget {
 }
 
 class _AuditFillScreenState extends State<AuditFillScreen> {
-  int _currentQuestion = 0;
   final Map<String, dynamic> _answers = {}; // questionId -> answer value
+  final Map<String, TextEditingController> _textControllers =
+      {}; // questionId -> controller
   double _progress = 0.0;
 
   bool _isLoading = true;
@@ -41,7 +43,16 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
     _loadTemplate();
   }
 
-  /// Charge le template et ses questions depuis PowerSync.
+  @override
+  void dispose() {
+    // Nettoyer tous les TextEditingController
+    for (final controller in _textControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  /// Charge le template et ses questions depuis Hive.
   /// Met à jour le statut de l'audit à 'in_progress' si c'est un draft.
   Future<void> _loadTemplate() async {
     try {
@@ -51,8 +62,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
       });
 
       // Charger le template avec ses questions
-      final template =
-          await PowerSyncService().getTemplateById(widget.templateId);
+      final template = HiveService().getTemplateById(widget.templateId);
 
       if (template == null) {
         setState(() {
@@ -69,13 +79,18 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
       // Cela permet de suivre quels audits ont été commencés
       await _updateAuditToInProgress();
 
+      // Charger les questions depuis Hive (stockées séparément du template)
+      final questions =
+          HiveService().getQuestionsForTemplate(widget.templateId);
+      debugPrint(
+          'Loaded ${questions.length} questions for template ${widget.templateId}');
+
       setState(() {
-        _questions = (template['questions'] as List<dynamic>?)
-                ?.cast<Map<String, dynamic>>() ??
-            [];
+        _questions = questions;
         _existingAnswers = existingAnswers;
         _isLoading = false;
       });
+      debugPrint('Loaded ${_questions.length} questions into UI');
 
       _updateProgress();
     } catch (e) {
@@ -86,77 +101,77 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
     }
   }
 
-  /// Charge les réponses existantes pour cet audit depuis PowerSync.
+  /// Charge les réponses existantes pour cet audit depuis Hive.
   Future<Map<String, dynamic>> _loadExistingAnswers() async {
     try {
-      final answers = await PowerSyncService().db.getAll(
-        'SELECT question_id, value FROM answers WHERE audit_id = ?',
-        [widget.auditId],
-      );
+      final audit = HiveService().getAuditById(widget.auditId);
+      if (audit == null) return {};
 
-      // Convertir en map questionId -> value
+      final answers = audit['answers'] as List<dynamic>? ?? [];
       final Map<String, dynamic> result = {};
       for (final answer in answers) {
         result[answer['question_id'] as String] = answer['value'];
       }
       return result;
     } catch (e) {
-      // Si erreur, retourner un map vide (nouvel audit)
       return {};
     }
   }
 
   /// Met à jour le statut de l'audit à 'in_progress' si c'est un draft.
-  /// Cela permet de suivre quels audits ont été commencés.
   Future<void> _updateAuditToInProgress() async {
     try {
-      await PowerSyncService().updateAuditStatus(widget.auditId, 'in_progress');
+      await HiveService().updateAuditStatus(widget.auditId, 'in_progress');
     } catch (e) {
-      // Ignorer l'erreur - l'audit reste en draft
       debugPrint('Erreur mise à jour statut audit: $e');
     }
   }
 
   void _updateProgress() {
-    final answeredCount =
-        _questions.where((q) => _answers.containsKey(q['id'])).length;
+    // Compter les réponses nouvelles + existantes
+    final answeredCount = _questions.where((q) {
+      final questionId = q['id'] as String;
+      return _answers.containsKey(questionId) ||
+          (_existingAnswers?.containsKey(questionId) ?? false);
+    }).length;
     setState(() {
       _progress = _questions.isEmpty ? 0.0 : answeredCount / _questions.length;
     });
   }
 
-  void _nextQuestion() {
-    if (_currentQuestion < _questions.length - 1) {
-      setState(() => _currentQuestion++);
-    }
-  }
-
-  void _previousQuestion() {
-    if (_currentQuestion > 0) {
-      setState(() => _currentQuestion--);
-    }
-  }
-
-  /// Sauvegarde la réponse dans PowerSync (auto-save).
+  /// Sauvegarde la réponse dans Hive (auto-save).
   /// Appelé à chaque changement de réponse pour éviter la perte de données.
-  Future<void> _saveAnswer(dynamic answer) async {
+  Future<void> _saveAnswer(String questionId, dynamic answer) async {
     if (_questions.isEmpty) return;
-
-    final question = _questions[_currentQuestion];
-    final questionId = question['id'] as String;
 
     setState(() {
       _answers[questionId] = answer;
     });
-    _updateProgress();
 
-    // Sauvegarder dans PowerSync (auto-save)
+    // Calculer la progression (incluant réponses existantes)
+    final answeredCount = _questions.where((q) {
+      final qId = q['id'] as String;
+      return _answers.containsKey(qId) ||
+          (_existingAnswers?.containsKey(qId) ?? false);
+    }).length;
+    final progress =
+        _questions.isEmpty ? 0.0 : answeredCount / _questions.length;
+
+    setState(() {
+      _progress = progress;
+    });
+
+    // Sauvegarder dans Hive (auto-save)
     try {
-      await PowerSyncService().saveAnswer(
+      await HiveService().saveAnswer(
         auditId: widget.auditId,
         questionId: questionId,
         value: answer.toString(),
       );
+
+      // Mettre à jour le score de progression dans l'audit
+      final progressPercent = (progress * 100).round();
+      await HiveService().updateAuditProgress(widget.auditId, progressPercent);
     } catch (e) {
       // Afficher un snackbar d'erreur mais continuer
       if (mounted) {
@@ -204,7 +219,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
           scoredQuestions > 0 ? (totalScore / scoredQuestions).round() : null;
 
       // Mettre à jour le statut de l'audit à 'completed'
-      await PowerSyncService().updateAuditStatus(
+      await HiveService().updateAuditStatus(
         widget.auditId,
         'completed',
         score: avgScore,
@@ -212,13 +227,11 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
 
       if (mounted) {
         // Naviguer vers l'écran de résultats
-        Navigator.pushReplacementNamed(
+        Navigator.pushReplacement(
           context,
-          '/audit/results',
-          arguments: {
-            'auditId': widget.auditId,
-            'templateId': widget.templateId,
-          },
+          MaterialPageRoute(
+            builder: (_) => ResultsScreen(auditId: widget.auditId),
+          ),
         );
       }
     } catch (e) {
@@ -295,10 +308,6 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
       );
     }
 
-    final question = _questions[_currentQuestion];
-    final questionId = question['id'] as String;
-    final currentAnswer = _answers[questionId] ?? _existingAnswers?[questionId];
-
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.auditTitle),
@@ -307,7 +316,6 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          // Indicateur de sauvegarde auto
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
@@ -324,88 +332,89 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
       ),
       body: Column(
         children: [
-          // Progress bar
           LinearProgressIndicator(
             value: _progress,
             backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
           ),
           Expanded(
-            child: SingleChildScrollView(
+            child: ListView.builder(
               padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header info
-                  Row(
+              itemCount: _questions.length,
+              itemBuilder: (context, index) {
+                final question = _questions[index];
+                final questionId = question['id'] as String;
+                final currentAnswer =
+                    _answers[questionId] ?? _existingAnswers?[questionId];
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 32),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: theme.cardTheme.color,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: theme.brightness == Brightness.dark
+                          ? Colors.white.withOpacity(0.06)
+                          : Colors.black.withOpacity(0.08),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(FontAwesomeIcons.spinner,
-                                size: 16, color: Colors.orange[700]),
-                            const SizedBox(width: 4),
-                            Text(
-                              'En cours',
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color:
+                                  theme.colorScheme.primary.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'Q${index + 1}',
                               style: TextStyle(
-                                color: Colors.orange[700],
+                                color: theme.colorScheme.primary,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (question['category'] != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                question['category'] as String,
+                                style: TextStyle(
+                                  color: Colors.orange[700],
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                      const Spacer(),
+                      const SizedBox(height: 16),
                       Text(
-                        'Question ${_currentQuestion + 1}/${_questions.length}',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  // Category badge (if available)
-                  if (question['category'] != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        question['category'] as String,
-                        style: TextStyle(
-                          color: theme.colorScheme.primary,
-                          fontSize: 12,
+                        question['text'] as String? ?? 'Question sans texte',
+                        style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ),
-                  const SizedBox(height: 16),
-                  // Question text (use 'text' field from PowerSync)
-                  Text(
-                    question['text'] as String? ?? 'Question sans texte',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                      const SizedBox(height: 24),
+                      _buildAnswerWidget(question, currentAnswer, questionId),
+                    ],
                   ),
-                  const SizedBox(height: 32),
-                  // Answer widget based on type
-                  _buildAnswerWidget(question, currentAnswer),
-                ],
-              ),
+                );
+              },
             ),
           ),
-          // Bottom navigation
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
@@ -420,35 +429,21 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
             ),
             child: Row(
               children: [
-                if (_currentQuestion > 0)
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _previousQuestion,
-                      icon: const Icon(FontAwesomeIcons.arrowLeft),
-                      label: const Text('Précédent'),
-                    ),
+                Text(
+                  '${(_progress * 100).round()}% complété (${_questions.where((q) => _answers.containsKey(q['id']) || (_existingAnswers?.containsKey(q['id']) ?? false)).length}/${_questions.length})',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
                   ),
-                if (_currentQuestion > 0) const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _currentQuestion < _questions.length - 1
-                        ? _nextQuestion
-                        : _finishAudit,
-                    icon: Icon(
-                      _currentQuestion < _questions.length - 1
-                          ? FontAwesomeIcons.arrowRight
-                          : FontAwesomeIcons.check,
-                    ),
-                    label: Text(
-                      _currentQuestion < _questions.length - 1
-                          ? 'Suivant'
-                          : 'Terminer',
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _currentQuestion < _questions.length - 1
-                          ? null
-                          : Colors.green,
-                    ),
+                ),
+                const Spacer(),
+                ElevatedButton.icon(
+                  onPressed: _finishAudit,
+                  icon: const Icon(FontAwesomeIcons.check),
+                  label: const Text('Terminer l\'audit'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
                   ),
                 ),
               ],
@@ -460,7 +455,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
   }
 
   Widget _buildAnswerWidget(
-      Map<String, dynamic> question, dynamic currentAnswer) {
+      Map<String, dynamic> question, dynamic currentAnswer, String questionId) {
     final type = question['type'] as String?;
 
     switch (type) {
@@ -473,7 +468,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                 label: 'Conforme',
                 color: Colors.green,
                 isSelected: currentAnswer == 'true' || currentAnswer == true,
-                onTap: () => _saveAnswer(true),
+                onTap: () => _saveAnswer(questionId, true),
               ),
             ),
             const SizedBox(width: 16),
@@ -483,7 +478,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                 label: 'Non conforme',
                 color: Colors.red,
                 isSelected: currentAnswer == 'false' || currentAnswer == false,
-                onTap: () => _saveAnswer(false),
+                onTap: () => _saveAnswer(questionId, false),
               ),
             ),
           ],
@@ -501,17 +496,22 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                 value: value,
                 isSelected:
                     currentAnswer == value || currentAnswer == value.toString(),
-                onTap: () => _saveAnswer(value),
+                onTap: () => _saveAnswer(questionId, value),
               );
             },
           ),
         );
       case 'text':
+        // Créer le controller si nécessaire
+        if (!_textControllers.containsKey(questionId)) {
+          _textControllers[questionId] = TextEditingController(
+            text: currentAnswer?.toString() ?? '',
+          );
+        }
         return TextField(
           maxLines: 5,
-          onChanged: _saveAnswer,
-          controller:
-              TextEditingController(text: currentAnswer?.toString() ?? ''),
+          onChanged: (value) => _saveAnswer(questionId, value),
+          controller: _textControllers[questionId],
           decoration: InputDecoration(
             hintText: 'Votre réponse...',
             filled: true,
@@ -544,7 +544,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                 } else {
                   current.remove(option.toString());
                 }
-                _saveAnswer(current.join(','));
+                _saveAnswer(questionId, current.join(','));
               },
               title: Text(option.toString()),
               shape: RoundedRectangleBorder(
@@ -587,6 +587,65 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                 label: const Text('Choisir depuis la galerie'),
               ),
             ],
+          ),
+        );
+      case 'number':
+        // Créer le controller si nécessaire
+        if (!_textControllers.containsKey(questionId)) {
+          _textControllers[questionId] = TextEditingController(
+            text: currentAnswer?.toString() ?? '',
+          );
+        }
+        return TextField(
+          keyboardType: TextInputType.number,
+          onChanged: (value) => _saveAnswer(questionId, num.tryParse(value)),
+          controller: _textControllers[questionId],
+          decoration: InputDecoration(
+            hintText: 'Entrez un nombre...',
+            filled: true,
+            fillColor: Theme.of(context).cardTheme.color,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        );
+      case 'date':
+        return InkWell(
+          onTap: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: currentAnswer != null
+                  ? DateTime.tryParse(currentAnswer.toString()) ??
+                      DateTime.now()
+                  : DateTime.now(),
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2100),
+            );
+            if (picked != null) {
+              _saveAnswer(questionId, picked.toIso8601String().split('T')[0]);
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardTheme.color,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(FontAwesomeIcons.calendar,
+                    color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 12),
+                Text(
+                  currentAnswer?.toString() ?? 'Sélectionner une date',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              ],
+            ),
           ),
         );
       default:

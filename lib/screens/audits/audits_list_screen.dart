@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../powersync/service.dart';
+import '../../hive/service.dart';
 import 'create_audit_screen.dart';
+import 'audit_fill_screen.dart';
+import 'edit_audit_screen.dart';
+import '../results/results_screen.dart';
 
-/// Audits list screen displaying real-time synced audits from PowerSync.
-///
-/// Uses [PowerSyncService.watchAudits] to subscribe to changes
-/// and automatically update the UI when data changes locally or remotely.
 class AuditsListScreen extends StatefulWidget {
-  final Function(Widget)? onNavigateToPage;
+  final Future<bool> Function(Widget)? onNavigateToPage;
   const AuditsListScreen({super.key, this.onNavigateToPage});
 
   @override
@@ -17,36 +16,66 @@ class AuditsListScreen extends StatefulWidget {
 }
 
 class _AuditsListScreenState extends State<AuditsListScreen> {
-  /// Filter by audit status (null = all statuses)
   String? _selectedStatus;
-
-  /// Search query for filtering by title or description
   String _searchQuery = '';
+  List<Map<String, dynamic>> _audits = [];
+  bool _isLoading = true;
 
-  /// Returns the appropriate color for each audit status.
-  ///
-  /// Used for status badges and progress indicators.
+  @override
+  void initState() {
+    super.initState();
+    _loadAudits();
+  }
+
+  void _loadAudits() {
+    setState(() => _isLoading = true);
+    try {
+      final audits = HiveService().getAudits(
+        status: _selectedStatus,
+        search: _searchQuery.isNotEmpty ? _searchQuery : null,
+      );
+      setState(() {
+        _audits = audits;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'Terminé':
+      case 'completed':
         return Colors.green;
-      case 'En cours':
+      case 'in_progress':
         return Colors.orange;
-      case 'Brouillon':
+      case 'draft':
         return Colors.grey;
       default:
         return Colors.blue;
     }
   }
 
-  /// Returns the appropriate icon for each audit status.
+  String _getStatusLabel(String status) {
+    switch (status) {
+      case 'completed':
+        return 'Terminé';
+      case 'in_progress':
+        return 'En cours';
+      case 'draft':
+        return 'Brouillon';
+      default:
+        return status;
+    }
+  }
+
   IconData _getStatusIcon(String status) {
     switch (status) {
-      case 'Terminé':
+      case 'completed':
         return FontAwesomeIcons.circleCheck;
-      case 'En cours':
+      case 'in_progress':
         return FontAwesomeIcons.spinner;
-      case 'Brouillon':
+      case 'draft':
         return FontAwesomeIcons.penToSquare;
       default:
         return FontAwesomeIcons.circleQuestion;
@@ -56,214 +85,239 @@ class _AuditsListScreenState extends State<AuditsListScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final powerSync = PowerSyncService();
 
     return Scaffold(
       body: SafeArea(
-        child: StreamBuilder<List<Map<String, dynamic>>>(
-          // Subscribe to real-time audit updates from PowerSync.
-          // The stream automatically emits new data when:
-          // - Local changes are made (create, update, delete)
-          // - Remote changes are synced from the server
-          stream: powerSync.watchAudits(
-            status: _selectedStatus,
-            search: _searchQuery.isNotEmpty ? _searchQuery : null,
-          ),
-          builder: (context, snapshot) {
-            // Handle loading state - show skeleton while waiting for initial data
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            // Handle error state
-            if (snapshot.hasError) {
-              return Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(FontAwesomeIcons.triangleExclamation,
-                        size: 48, color: Colors.red),
-                    const SizedBox(height: 16),
-                    Text('Erreur: ${snapshot.error}'),
-                  ],
-                ),
-              );
-            }
-
-            final audits = snapshot.data ?? [];
-
-            return CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Audits',
-                                  style:
-                                      theme.textTheme.headlineMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                )
-                                    .animate()
-                                    .fadeIn(duration: 400.ms)
-                                    .slideX(begin: -0.1),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${audits.length} audits',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: theme.colorScheme.onSurface
-                                        .withOpacity(0.6),
-                                  ),
-                                )
-                                    .animate()
-                                    .fadeIn(delay: 100.ms, duration: 400.ms),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        // Search field - filters are applied via watchAudits stream
-                        TextField(
-                          onChanged: (value) =>
-                              setState(() => _searchQuery = value),
-                          decoration: InputDecoration(
-                            hintText: 'Rechercher un audit...',
-                            prefixIcon:
-                                const Icon(FontAwesomeIcons.magnifyingGlass),
-                            suffixIcon: _searchQuery.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(FontAwesomeIcons.xmark),
-                                    onPressed: () =>
-                                        setState(() => _searchQuery = ''),
-                                  )
-                                : null,
-                            filled: true,
-                            fillColor: theme.cardTheme.color,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        // Status filters - clicking updates stream via setState
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              _StatusFilterChip(
-                                label: 'Tous',
-                                isSelected: _selectedStatus == null,
-                                onSelected: () =>
-                                    setState(() => _selectedStatus = null),
-                              ),
-                              _StatusFilterChip(
-                                label: 'En cours',
-                                isSelected: _selectedStatus == 'En cours',
-                                color: Colors.orange,
-                                onSelected: () => setState(
-                                    () => _selectedStatus = 'En cours'),
-                              ),
-                              _StatusFilterChip(
-                                label: 'Terminé',
-                                isSelected: _selectedStatus == 'Terminé',
-                                color: Colors.green,
-                                onSelected: () =>
-                                    setState(() => _selectedStatus = 'Terminé'),
-                              ),
-                              _StatusFilterChip(
-                                label: 'Brouillon',
-                                isSelected: _selectedStatus == 'Brouillon',
-                                color: Colors.grey,
-                                onSelected: () => setState(
-                                    () => _selectedStatus = 'Brouillon'),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Audits',
+                                    style: theme.textTheme.headlineMedium
+                                        ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  )
+                                      .animate()
+                                      .fadeIn(duration: 400.ms)
+                                      .slideX(begin: -0.1),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${_audits.length} audits',
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: theme.colorScheme.onSurface
+                                          .withOpacity(0.6),
+                                    ),
+                                  )
+                                      .animate()
+                                      .fadeIn(delay: 100.ms, duration: 400.ms),
+                                ],
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-                    ),
-                  ),
-                ),
-                // Empty state when no audits match filters
-                if (audits.isEmpty)
-                  SliverFillRemaining(
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            FontAwesomeIcons.clipboardList,
-                            size: 64,
-                            color: Colors.grey[400],
+                          const SizedBox(height: 24),
+                          TextField(
+                            onChanged: (value) {
+                              setState(() => _searchQuery = value);
+                              _loadAudits();
+                            },
+                            decoration: InputDecoration(
+                              hintText: 'Rechercher un audit...',
+                              prefixIcon:
+                                  const Icon(FontAwesomeIcons.magnifyingGlass),
+                              suffixIcon: _searchQuery.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(FontAwesomeIcons.xmark),
+                                      onPressed: () {
+                                        setState(() => _searchQuery = '');
+                                        _loadAudits();
+                                      },
+                                    )
+                                  : null,
+                              filled: true,
+                              fillColor: theme.cardTheme.color,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 16),
-                          Text(
-                            'Aucun audit trouvé',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: Colors.grey[600],
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _StatusFilterChip(
+                                  label: 'Tous',
+                                  isSelected: _selectedStatus == null,
+                                  onSelected: () {
+                                    setState(() => _selectedStatus = null);
+                                    _loadAudits();
+                                  },
+                                ),
+                                _StatusFilterChip(
+                                  label: 'En cours',
+                                  isSelected: _selectedStatus == 'in_progress',
+                                  color: Colors.orange,
+                                  onSelected: () {
+                                    setState(
+                                        () => _selectedStatus = 'in_progress');
+                                    _loadAudits();
+                                  },
+                                ),
+                                _StatusFilterChip(
+                                  label: 'Terminé',
+                                  isSelected: _selectedStatus == 'completed',
+                                  color: Colors.green,
+                                  onSelected: () {
+                                    setState(
+                                        () => _selectedStatus = 'completed');
+                                    _loadAudits();
+                                  },
+                                ),
+                                _StatusFilterChip(
+                                  label: 'Brouillon',
+                                  isSelected: _selectedStatus == 'draft',
+                                  color: Colors.grey,
+                                  onSelected: () {
+                                    setState(() => _selectedStatus = 'draft');
+                                    _loadAudits();
+                                  },
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Créez votre premier audit pour commencer',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: Colors.grey[500],
-                            ),
-                          ),
+                          const SizedBox(height: 24),
                         ],
                       ),
                     ),
-                  )
-                else
-                  // Audit list - each item updates reactively
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final audit = audits[index];
-                          final statusColor = _getStatusColor(
-                              audit['status'] as String? ?? 'Brouillon');
-                          return _AuditCard(
-                            audit: audit,
-                            statusColor: statusColor,
-                            getStatusIcon: _getStatusIcon,
-                          )
-                              .animate()
-                              .fadeIn(
-                                  delay: Duration(
-                                      milliseconds: 300 + (index * 50)))
-                              .slideX(
-                                  begin: 0.1,
-                                  delay: Duration(
-                                      milliseconds: 300 + (index * 50)));
-                        },
-                        childCount: audits.length,
+                  ),
+                  if (_audits.isEmpty)
+                    SliverFillRemaining(
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              FontAwesomeIcons.clipboardList,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Aucun audit trouvé',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Créez votre premier audit pour commencer',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final audit = _audits[index];
+                            final status =
+                                audit['status'] as String? ?? 'draft';
+                            final statusColor = _getStatusColor(status);
+                            return _AuditCard(
+                              audit: audit,
+                              statusColor: statusColor,
+                              getStatusIcon: _getStatusIcon,
+                              getStatusLabel: _getStatusLabel,
+                              onDelete: () async {
+                                await HiveService()
+                                    .deleteAudit(audit['id'] as String);
+                                _loadAudits();
+                              },
+                              onEdit: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => EditAuditScreen(
+                                        auditId: audit['id'] as String),
+                                  ),
+                                ).then((_) => _loadAudits());
+                              },
+                              onFill: () {
+                                final status =
+                                    audit['status'] as String? ?? 'draft';
+                                if (status == 'completed') {
+                                  // Naviguer vers les résultats
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ResultsScreen(
+                                          auditId: audit['id'] as String),
+                                    ),
+                                  );
+                                } else {
+                                  // Naviguer vers le remplissage
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => AuditFillScreen(
+                                        auditId: audit['id'] as String,
+                                        templateId:
+                                            audit['template_id'] as String,
+                                        auditTitle: audit['title'] as String? ??
+                                            'Audit',
+                                      ),
+                                    ),
+                                  ).then((_) => _loadAudits());
+                                }
+                              },
+                            )
+                                .animate()
+                                .fadeIn(
+                                    delay: Duration(
+                                        milliseconds: 300 + (index * 50)))
+                                .slideX(
+                                    begin: 0.1,
+                                    delay: Duration(
+                                        milliseconds: 300 + (index * 50)));
+                          },
+                          childCount: _audits.length,
+                        ),
                       ),
                     ),
+                  const SliverToBoxAdapter(
+                    child: SizedBox(height: 100),
                   ),
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 100),
-                ),
-              ],
-            );
-          },
-        ),
+                ],
+              ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          widget.onNavigateToPage?.call(const CreateAuditScreen());
+        onPressed: () async {
+          final result = await widget.onNavigateToPage?.call(
+              CreateAuditScreen(onNavigateToPage: widget.onNavigateToPage));
+          if (result == true) {
+            _loadAudits();
+          }
         },
         icon: const Icon(FontAwesomeIcons.plus),
         label: const Text('Nouvel audit'),
@@ -272,26 +326,30 @@ class _AuditsListScreenState extends State<AuditsListScreen> {
   }
 }
 
-/// Audit card widget displaying a single audit's information.
-///
-/// Extracted to a separate widget for better performance
-/// with const constructors and rebuild optimization.
 class _AuditCard extends StatelessWidget {
   final Map<String, dynamic> audit;
   final Color statusColor;
   final IconData Function(String) getStatusIcon;
+  final String Function(String) getStatusLabel;
+  final VoidCallback onDelete;
+  final VoidCallback onEdit;
+  final VoidCallback onFill;
 
   const _AuditCard({
     required this.audit,
     required this.statusColor,
     required this.getStatusIcon,
+    required this.getStatusLabel,
+    required this.onDelete,
+    required this.onEdit,
+    required this.onFill,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final status = audit['status'] as String? ?? 'Brouillon';
-    final progress = audit['score'] as int? ?? 0;
+    final status = audit['status'] as String? ?? 'draft';
+    final score = audit['score'] as int?;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -310,7 +368,6 @@ class _AuditCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              // Category badge
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -319,7 +376,7 @@ class _AuditCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  audit['template_id'] as String? ?? 'Audit',
+                  _getTemplateCategory(audit['template_id'] as String?),
                   style: TextStyle(
                     fontSize: 11,
                     color: theme.colorScheme.primary,
@@ -328,7 +385,6 @@ class _AuditCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              // Status badge
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -346,7 +402,7 @@ class _AuditCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      status,
+                      getStatusLabel(status),
                       style: TextStyle(
                         fontSize: 11,
                         color: statusColor,
@@ -359,7 +415,6 @@ class _AuditCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          // Title
           Text(
             audit['title'] as String? ?? 'Sans titre',
             style: theme.textTheme.titleSmall?.copyWith(
@@ -367,7 +422,6 @@ class _AuditCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          // Description
           if (audit['description'] != null)
             Text(
               audit['description'] as String,
@@ -378,12 +432,11 @@ class _AuditCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           const SizedBox(height: 12),
-          // Progress bar for in-progress audits
-          if (status == 'En cours') ...[
+          if (status == 'in_progress' && score != null) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
-                value: progress / 100,
+                value: score / 100,
                 backgroundColor: Colors.grey[800],
                 valueColor: AlwaysStoppedAnimation<Color>(statusColor),
                 minHeight: 6,
@@ -391,63 +444,85 @@ class _AuditCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '$progress% complété',
+              '$score% complété',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.5),
                 fontSize: 11,
               ),
             ),
             const SizedBox(height: 12),
+          ] else if (status == 'completed' && score != null) ...[
+            Row(
+              children: [
+                Icon(FontAwesomeIcons.chartPie, size: 16, color: Colors.green),
+                const SizedBox(width: 8),
+                Text(
+                  'Score: $score%',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
           ],
-          // Dates row
           Row(
             children: [
               Icon(FontAwesomeIcons.calendarDays,
                   size: 14, color: Colors.grey[500]),
               const SizedBox(width: 4),
               Text(
-                audit['created_at'] as String? ?? '',
+                _formatDate(audit['updated_at'] as String?),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurface.withOpacity(0.6),
                 ),
               ),
               const Spacer(),
-              // Actions menu
               PopupMenuButton<String>(
                 onSelected: (value) {
-                  // TODO: Handle menu actions (edit, fill, results, delete)
+                  if (value == 'delete') {
+                    onDelete();
+                  } else if (value == 'edit') {
+                    onEdit();
+                  } else if (value == 'fill') {
+                    onFill();
+                  }
                 },
                 itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(FontAwesomeIcons.pen, size: 18),
-                        SizedBox(width: 8),
-                        Text('Modifier'),
-                      ],
+                  if (status != 'completed')
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(FontAwesomeIcons.pen, size: 18),
+                          SizedBox(width: 8),
+                          Text('Modifier'),
+                        ],
+                      ),
                     ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'fill',
-                    child: Row(
-                      children: [
-                        Icon(FontAwesomeIcons.clipboardList, size: 18),
-                        SizedBox(width: 8),
-                        Text('Remplir'),
-                      ],
+                  if (status == 'completed')
+                    const PopupMenuItem(
+                      value: 'fill',
+                      child: Row(
+                        children: [
+                          Icon(FontAwesomeIcons.chartPie, size: 18),
+                          SizedBox(width: 8),
+                          Text('Voir résultats'),
+                        ],
+                      ),
                     ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'results',
-                    child: Row(
-                      children: [
-                        Icon(FontAwesomeIcons.chartLine, size: 18),
-                        SizedBox(width: 8),
-                        Text('Voir résultats'),
-                      ],
+                  if (status != 'completed')
+                    const PopupMenuItem(
+                      value: 'fill',
+                      child: Row(
+                        children: [
+                          Icon(FontAwesomeIcons.clipboardList, size: 18),
+                          SizedBox(width: 8),
+                          Text('Remplir'),
+                        ],
+                      ),
                     ),
-                  ),
                   const PopupMenuItem(
                     value: 'delete',
                     child: Row(
@@ -466,6 +541,39 @@ class _AuditCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _getTemplateCategory(String? templateId) {
+    if (templateId == null) return 'Audit';
+    final template = HiveService().getTemplateById(templateId);
+    if (template == null) return 'Audit';
+    return template['category'] as String? ??
+        template['name'] as String? ??
+        'Audit';
+  }
+
+  String _formatDate(String? isoDate) {
+    if (isoDate == null || isoDate.isEmpty) return 'Date inconnue';
+    try {
+      final date = DateTime.parse(isoDate);
+      final now = DateTime.now();
+      final diff = now.difference(date);
+
+      if (diff.inDays == 0) {
+        if (diff.inHours == 0) {
+          return 'À l\'instant';
+        }
+        return 'Il y a ${diff.inHours}h';
+      } else if (diff.inDays == 1) {
+        return 'Hier';
+      } else if (diff.inDays < 7) {
+        return 'Il y a ${diff.inDays} jours';
+      } else {
+        return 'Il y a ${diff.inDays ~/ 7} sem.';
+      }
+    } catch (e) {
+      return 'Date inconnue';
+    }
   }
 }
 

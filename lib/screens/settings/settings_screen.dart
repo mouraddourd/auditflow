@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../core/theme/theme_provider.dart';
-import '../../powersync/service.dart';
+import '../../hive/service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final VoidCallback? onLogout;
@@ -419,7 +419,7 @@ class _AppearancePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    Theme.of(context);
     final themeProvider = context.watch<ThemeProvider>();
 
     return Scaffold(
@@ -486,7 +486,7 @@ class _CategoriesPageState extends State<_CategoriesPage> {
 
   Future<void> _loadCategories() async {
     try {
-      final templates = await PowerSyncService().getTemplates();
+      final templates = HiveService().getTemplates();
 
       // Compter les templates par catégorie
       final counts = <String, int>{};

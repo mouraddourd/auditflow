@@ -27,13 +27,22 @@ export interface AuthResponse {
       name: string | null;
     };
     token: string;
+    organization?: {
+      id: string;
+      name: string;
+      slug: string;
+      licenseTier: string | null;
+      createdAt: string;
+      updatedAt: string;
+      userRole: string;
+    };
   };
   error?: string;
 }
 
 const JWT_EXPIRES_IN = '7d';
 
-// HS256 secret for JWT signing (PowerSync Open Edition only supports HMAC)
+// JWT secret for signing tokens
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-not-for-production';
 
 export class AuthService {
@@ -68,11 +77,11 @@ export class AuthService {
         },
       });
 
-      // Generate JWT with HS256 (PowerSync Open Edition compatible)
+      // Generate JWT token
       const token = jwt.sign(
-        { userId: user.id, email: user.email, kid: 'powersync-dev-key' },
+        { userId: user.id, email: user.email },
         JWT_SECRET,
-        { algorithm: 'HS256', expiresIn: JWT_EXPIRES_IN, header: { alg: 'HS256', kid: 'powersync-dev-key' } }
+        { algorithm: 'HS256', expiresIn: JWT_EXPIRES_IN }
       );
 
       return {
@@ -84,6 +93,7 @@ export class AuthService {
             name: user.name,
           },
           token,
+          organization: undefined,
         },
       };
     } catch (error) {
@@ -108,9 +118,17 @@ export class AuthService {
     try {
       const validated = loginSchema.parse(input);
 
-      // Find user
+      // Find user with their organization (any role)
       const user = await prisma.user.findUnique({
         where: { email: validated.email },
+        include: {
+          organizationMembers: {
+            include: {
+              organization: true,
+            },
+            take: 1,
+          },
+        },
       });
 
       if (!user) {
@@ -130,12 +148,15 @@ export class AuthService {
         };
       }
 
-      // Generate JWT with HS256 (PowerSync Open Edition compatible)
+      // Generate JWT token
       const token = jwt.sign(
-        { userId: user.id, email: user.email, kid: 'powersync-dev-key' },
+        { userId: user.id, email: user.email },
         JWT_SECRET,
-        { algorithm: 'HS256', expiresIn: JWT_EXPIRES_IN, header: { alg: 'HS256', kid: 'powersync-dev-key' } }
+        { algorithm: 'HS256', expiresIn: JWT_EXPIRES_IN }
       );
+
+      // Get organization if user is owner
+      const userOrg = user.organizationMembers[0];
 
       return {
         success: true,
@@ -146,6 +167,15 @@ export class AuthService {
             name: user.name,
           },
           token,
+          organization: userOrg ? {
+            id: userOrg.organization.id,
+            name: userOrg.organization.name,
+            slug: userOrg.organization.slug,
+            licenseTier: userOrg.organization.licenseTier,
+            createdAt: userOrg.organization.createdAt.toISOString(),
+            updatedAt: userOrg.organization.updatedAt.toISOString(),
+            userRole: userOrg.role,
+          } : undefined,
         },
       };
     } catch (error) {

@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../powersync/service.dart';
+import '../../hive/service.dart';
+import '../audits/create_audit_screen.dart';
+import '../audits/audit_fill_screen.dart';
+import '../results/results_screen.dart';
 
-/// Dashboard screen with real-time stats from PowerSync.
+/// Dashboard screen with stats from Hive.
 ///
 /// Displays:
 /// - Audit statistics (total, completed, in progress, drafts)
@@ -13,15 +16,16 @@ import '../../powersync/service.dart';
 /// - Recent audits list from watchAudits stream
 class DashboardScreen extends StatefulWidget {
   final Function(int)? onNavigate;
-  final Function(Widget)? onNavigateToPage;
+  final Future<bool> Function(Widget)? onNavigateToPage;
   const DashboardScreen({super.key, this.onNavigate, this.onNavigateToPage});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
-  /// Audit statistics loaded from PowerSync
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver {
+  /// Audit statistics loaded from Hive
   Map<String, dynamic> _stats = {};
 
   /// Loading state for stats
@@ -30,15 +34,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadStats();
   }
 
-  /// Loads audit statistics from PowerSync.
-  ///
-  /// Stats include: total, completed, in_progress, draft, avg_score
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadStats();
+    }
+  }
+
+  /// Loads audit statistics from Hive.
   Future<void> _loadStats() async {
     try {
-      final stats = await PowerSyncService().getAuditStats();
+      final stats = HiveService().getAuditStats();
       setState(() {
         _stats = stats;
         _isLoadingStats = false;
@@ -89,7 +105,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Stat cards - real data from PowerSync
+                    // Stat cards - real data from Hive
                     if (_isLoadingStats)
                       const Center(child: CircularProgressIndicator())
                     else
@@ -164,7 +180,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     const SizedBox(height: 24),
 
-                    // Score moyen card - real average from PowerSync
+                    // Score moyen card - real average from Hive
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -295,20 +311,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
 
-            // Recent audits from PowerSync stream
+            // Recent audits from Hive
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              sliver: StreamBuilder<List<Map<String, dynamic>>>(
-                // Watch last 5 audits for real-time updates
-                stream: PowerSyncService().watchAudits(limit: 5),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const SliverToBoxAdapter(
-                      child: Center(child: CircularProgressIndicator()),
-                    );
-                  }
-
-                  final audits = snapshot.data ?? [];
+              sliver: Builder(
+                builder: (context) {
+                  final audits = HiveService().getAudits().take(5).toList();
 
                   if (audits.isEmpty) {
                     return SliverToBoxAdapter(
@@ -340,21 +348,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: _AuditCard(
-                            title: audit['title'] as String? ?? 'Sans titre',
-                            status: status,
-                            score: score,
-                            date: _formatDate(audit['updated_at'] as String?),
-                          )
-                              .animate()
-                              .fadeIn(
-                                  delay: Duration(
-                                      milliseconds: 600 + (100 * index)))
-                              .slideX(
-                                  begin: 0.1,
-                                  delay: Duration(
-                                      milliseconds: 600 + (100 * index))),
-                        );
+                          child: GestureDetector(
+                            onTap: () {
+                              if (status == 'completed') {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ResultsScreen(
+                                        auditId: audit['id'] as String),
+                                  ),
+                                );
+                              } else {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => AuditFillScreen(
+                                      auditId: audit['id'] as String,
+                                      templateId:
+                                          audit['template_id'] as String,
+                                      auditTitle:
+                                          audit['title'] as String? ?? 'Audit',
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            child: _AuditCard(
+                              title: audit['title'] as String? ?? 'Sans titre',
+                              status: status,
+                              score: score,
+                              date: _formatDate(audit['updated_at'] as String?),
+                              auditId: audit['id'] as String,
+                              templateId: audit['template_id'] as String,
+                            ),
+                          ),
+                        )
+                            .animate()
+                            .fadeIn(
+                                delay:
+                                    Duration(milliseconds: 600 + (100 * index)))
+                            .slideX(
+                                begin: 0.1,
+                                delay: Duration(
+                                    milliseconds: 600 + (100 * index)));
                       },
                       childCount: audits.length,
                     ),
@@ -370,8 +406,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // Navigate to create audit screen
-          widget.onNavigateToPage?.call(const CreateAuditScreenPlaceholder());
+          widget.onNavigateToPage?.call(
+              CreateAuditScreen(onNavigateToPage: widget.onNavigateToPage));
         },
         icon: const Icon(FontAwesomeIcons.plus),
         label: const Text('Nouvel audit'),
@@ -403,17 +439,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (e) {
       return 'Date inconnue';
     }
-  }
-}
-
-/// Placeholder for CreateAuditScreen to avoid circular import
-class CreateAuditScreenPlaceholder extends StatelessWidget {
-  const CreateAuditScreenPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    // This will be replaced by actual navigation
-    return const Scaffold(body: Center(child: Text('Create Audit')));
   }
 }
 
@@ -481,12 +506,17 @@ class _AuditCard extends StatelessWidget {
   final String status;
   final int? score;
   final String date;
+  final String auditId;
+  final String templateId;
+  final VoidCallback? onTap;
 
   const _AuditCard({
     required this.title,
     required this.status,
     this.score,
     required this.date,
+    required this.auditId,
+    required this.templateId,
   });
 
   @override

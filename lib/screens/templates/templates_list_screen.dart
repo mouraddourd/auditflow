@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../powersync/service.dart';
+import '../../hive/service.dart';
 import 'create_template_screen.dart';
+import 'edit_template_screen.dart';
 import '../audits/create_audit_screen.dart';
 
 class TemplatesListScreen extends StatefulWidget {
-  final Function(Widget)? onNavigateToPage;
+  final Future<bool> Function(Widget)? onNavigateToPage;
   const TemplatesListScreen({super.key, this.onNavigateToPage});
 
   @override
@@ -45,7 +46,7 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
         _error = null;
       });
 
-      final templates = await PowerSyncService().getTemplates();
+      final templates = HiveService().getTemplates();
 
       setState(() {
         _templates = templates;
@@ -269,12 +270,13 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
                                   0,
                           description: template['description'] as String? ?? '',
                           onEdit: () {
-                            // TODO: Navigation vers édition de template
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text(
-                                      'Édition de template à implémenter')),
-                            );
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => EditTemplateScreen(
+                                    templateId: template['id']),
+                              ),
+                            ).then((_) => _loadTemplates());
                           },
                           onUse: () {
                             // Naviguer vers CreateAudit avec ce template pré-sélectionné

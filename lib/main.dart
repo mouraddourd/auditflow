@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'core/widgets/theme_toggle_button.dart';
 import 'core/providers/organization_provider.dart';
 import 'services/auth_service.dart';
-import 'powersync/service.dart';
+import 'hive/service.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/organization/organization_onboarding_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
@@ -15,10 +16,11 @@ import 'screens/audits/audits_list_screen.dart';
 import 'screens/templates/templates_list_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/error/init_error_screen.dart';
+import 'core/splash/splash_screen.dart';
 
 /// App initialization wrapper that handles startup errors.
 ///
-/// Shows an error screen if PowerSync initialization fails,
+/// Shows an error screen if Hive initialization fails,
 /// allowing the user to retry without restarting the app.
 class AppInitializer extends StatefulWidget {
   const AppInitializer({super.key});
@@ -41,7 +43,7 @@ class _AppInitializerState extends State<AppInitializer> {
   /// Initializes all required services.
   ///
   /// Currently initializes:
-  /// - PowerSync: Local SQLite database for offline-first sync
+  /// - Hive: Local storage for offline-first functionality
   ///
   /// If initialization fails, sets [_error] to show error screen.
   Future<void> _initialize() async {
@@ -50,9 +52,8 @@ class _AppInitializerState extends State<AppInitializer> {
     });
 
     try {
-      // PowerSync must be initialized before any database operations.
-      // It creates the local SQLite database with our schema.
-      await PowerSyncService().initialize();
+      // Hive must be initialized before any database operations
+      await HiveService().initialize();
 
       setState(() {
         _initialized = true;
@@ -75,22 +76,14 @@ class _AppInitializerState extends State<AppInitializer> {
       );
     }
 
-    // Show loading while initializing
+    // Show splash screen while initializing
     if (!_initialized) {
       return MaterialApp(
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
-        home: const Scaffold(
-          body: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Initialisation...'),
-              ],
-            ),
-          ),
+        home: SplashScreen(
+          onComplete: () {},
+          isLoading: true,
         ),
       );
     }
@@ -100,9 +93,12 @@ class _AppInitializerState extends State<AppInitializer> {
   }
 }
 
-void main() {
+void main() async {
   // Required for async operations in main
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize locale data for intl date formatting
+  await initializeDateFormatting('fr_FR', null);
 
   // Run the initialization wrapper instead of the app directly
   runApp(const AppInitializer());
@@ -158,7 +154,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
   String? _token;
 
   final _authService = AuthService();
-  final _powerSyncService = PowerSyncService();
+  final _hiveService = HiveService();
 
   @override
   void initState() {
@@ -173,7 +169,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       final userId = await _authService.getUserId();
       final token = await _authService.getToken();
       if (userId != null && token != null) {
-        await _powerSyncService.connect(userId: userId, authToken: token);
+        _hiveService.setUser(userId);
         setState(() {
           _isLoggedIn = true;
           _userId = userId;
@@ -184,9 +180,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
     setState(() => _isCheckingAuth = false);
   }
 
-  void _login(String userId, String token) async {
-    // Connect PowerSync with the token
-    await _powerSyncService.connect(userId: userId, authToken: token);
+  void _login(String userId, String token,
+      {Map<String, dynamic>? organization}) async {
+    _hiveService.setUser(userId);
+
+    // Save organization to Hive if provided
+    if (organization != null) {
+      await _hiveService.saveOrganization(organization);
+    }
 
     setState(() {
       _isLoggedIn = true;
@@ -196,11 +197,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   void _logout() async {
-    // Logout from AuthService (clears stored token)
     await _authService.logout();
-
-    // Disconnect PowerSync
-    await _powerSyncService.disconnect();
+    await _hiveService.clear();
 
     final orgProvider = context.read<OrganizationProvider>();
     orgProvider.clear();
@@ -329,11 +327,12 @@ class _MainScreenState extends State<MainScreen> {
     setState(() => _currentIndex = index);
   }
 
-  void _navigateToPage(Widget page) {
-    Navigator.push(
+  Future<bool> _navigateToPage(Widget page) async {
+    final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (_) => page),
     );
+    return result ?? false;
   }
 
   @override

@@ -15,7 +15,6 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      - POWERSYNC_URL=http://powersync:8080
       - PORT=${BACKEND_PORT:-3000}
       - JWT_SECRET=${JWT_SECRET}
     networks:
@@ -23,8 +22,6 @@ services:
       - internal_prod
     depends_on:
       db:
-        condition: service_healthy
-      powersync:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${BACKEND_PORT:-3000}/health"]
@@ -48,36 +45,7 @@ services:
       - "traefik.http.routers.backend.service=backend"
       - "traefik.http.services.backend.loadbalancer.server.port=${BACKEND_PORT:-3000}"
 
-  # PowerSync Service (self-hosted)
-  powersync:
-    image: journeyapps/powersync-service:latest
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_HOST=db
-      - POWERSYNC_PUBLIC_KEY=${POWERSYNC_PUBLIC_KEY}
-      - JWT_SECRET=${POWERSYNC_JWT_SECRET}
-      - LOG_LEVEL=info
-    networks:
-      - internal_prod
-    volumes:
-      - ./powersync.template.yaml:/app/powersync.template.yaml:ro
-      - ./powersync-sync-rules.yml:/config/powersync-sync-rules.yml:ro
-    depends_on:
-      db:
-        condition: service_healthy
-    command: >
-      sh -c "envsubst < /app/powersync.template.yaml > /tmp/powersync.yaml &&
-             exec /app/bin/powersync start --config /tmp/powersync.yaml"
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/probes/liveness', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  # PostgreSQL with logical replication enabled
+  # PostgreSQL Database
   db:
     image: postgres:14-alpine
     environment:
@@ -89,11 +57,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
-    command: >
-      postgres 
-      -c wal_level=logical
-      -c max_replication_slots=10
-      -c max_wal_senders=10
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s

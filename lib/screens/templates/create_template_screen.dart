@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../powersync/service.dart';
+import '../../hive/service.dart';
 
 class CreateTemplateScreen extends StatefulWidget {
   const CreateTemplateScreen({super.key});
@@ -41,13 +41,29 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
     );
   }
 
+  void _editQuestion(int index) {
+    final existingQuestion = _questions[index];
+    showDialog(
+      context: context,
+      builder: (context) => _AddQuestionDialog(
+        initialQuestion: existingQuestion,
+        onAdd: (question) {
+          setState(() {
+            _questions[index] = question;
+          });
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
   void _removeQuestion(int index) {
     setState(() {
       _questions.removeAt(index);
     });
   }
 
-  /// Sauvegarde le template dans PowerSync
+  /// Sauvegarde le template dans Hive
   Future<void> _saveTemplate() async {
     // Validation
     if (_titleController.text.trim().isEmpty) {
@@ -69,7 +85,7 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
     });
 
     try {
-      await PowerSyncService().createTemplate(
+      await HiveService().createTemplate(
         name: _titleController.text.trim(),
         category: _selectedCategory!,
         description: _descriptionController.text.trim().isEmpty
@@ -298,7 +314,10 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                     index: index + 1,
                     question: question['text'] as String,
                     type: question['type'] as String,
+                    options:
+                        (question['options'] as List<dynamic>?)?.cast<String>(),
                     onDelete: () => _removeQuestion(index),
+                    onEdit: () => _editQuestion(index),
                   );
                 },
               ),
@@ -364,8 +383,9 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
 
 class _AddQuestionDialog extends StatefulWidget {
   final Function(Map<String, dynamic>) onAdd;
+  final Map<String, dynamic>? initialQuestion;
 
-  const _AddQuestionDialog({required this.onAdd});
+  const _AddQuestionDialog({required this.onAdd, this.initialQuestion});
 
   @override
   State<_AddQuestionDialog> createState() => _AddQuestionDialogState();
@@ -373,7 +393,23 @@ class _AddQuestionDialog extends StatefulWidget {
 
 class _AddQuestionDialogState extends State<_AddQuestionDialog> {
   final _textController = TextEditingController();
+  final _optionsController = TextEditingController();
   String _type = 'yes_no';
+  List<String> _options = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialiser avec les valeurs existantes si on modifie une question
+    if (widget.initialQuestion != null) {
+      _textController.text = widget.initialQuestion!['text'] as String? ?? '';
+      _type = widget.initialQuestion!['type'] as String? ?? 'yes_no';
+      final opts = widget.initialQuestion!['options'] as List<dynamic>?;
+      if (opts != null) {
+        _options = opts.map((e) => e.toString()).toList();
+      }
+    }
+  }
 
   final List<Map<String, dynamic>> _types = [
     {
@@ -388,15 +424,34 @@ class _AddQuestionDialogState extends State<_AddQuestionDialog> {
       'label': 'Choix multiple',
       'icon': FontAwesomeIcons.listCheck
     },
+    {'value': 'number', 'label': 'Nombre', 'icon': FontAwesomeIcons.hashtag},
+    {'value': 'date', 'label': 'Date', 'icon': FontAwesomeIcons.calendar},
     {'value': 'photo', 'label': 'Photo', 'icon': FontAwesomeIcons.camera},
   ];
+
+  void _addOption() {
+    if (_optionsController.text.isNotEmpty) {
+      setState(() {
+        _options.add(_optionsController.text);
+        _optionsController.clear();
+      });
+    }
+  }
+
+  void _removeOption(int index) {
+    setState(() {
+      _options.removeAt(index);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return AlertDialog(
-      title: const Text('Ajouter une question'),
+      title: Text(widget.initialQuestion != null
+          ? 'Modifier la question'
+          : 'Ajouter une question'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -433,6 +488,71 @@ class _AddQuestionDialogState extends State<_AddQuestionDialog> {
                 secondary: Icon(type['icon'] as IconData),
               );
             }),
+            // Options pour les questions de type multiple
+            if (_type == 'multiple') ...[
+              const SizedBox(height: 24),
+              Text(
+                'Options de réponse',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _optionsController,
+                      decoration: InputDecoration(
+                        labelText: 'Nouvelle option',
+                        hintText: 'Ex: Option A',
+                        filled: true,
+                        fillColor: theme.cardTheme.color,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      onSubmitted: (_) => _addOption(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: _addOption,
+                    icon: const Icon(FontAwesomeIcons.plus),
+                    style: IconButton.styleFrom(
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ..._options.asMap().entries.map((entry) {
+                final index = entry.key;
+                final option = entry.value;
+                return ListTile(
+                  dense: true,
+                  leading: Icon(FontAwesomeIcons.circle,
+                      size: 16,
+                      color: theme.colorScheme.onSurface.withOpacity(0.5)),
+                  title: Text(option),
+                  trailing: IconButton(
+                    icon: const Icon(FontAwesomeIcons.xmark,
+                        size: 16, color: Colors.red),
+                    onPressed: () => _removeOption(index),
+                  ),
+                );
+              }),
+              if (_options.isEmpty)
+                Text(
+                  'Ajoutez au moins une option',
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontSize: 12,
+                  ),
+                ),
+            ],
           ],
         ),
       ),
@@ -444,13 +564,24 @@ class _AddQuestionDialogState extends State<_AddQuestionDialog> {
         ElevatedButton(
           onPressed: () {
             if (_textController.text.isNotEmpty) {
+              if (_type == 'multiple' && _options.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Veuillez ajouter au moins une option'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
               widget.onAdd({
                 'text': _textController.text,
                 'type': _type,
+                if (_type == 'multiple') 'options': _options,
               });
+              Navigator.pop(context);
             }
           },
-          child: const Text('Ajouter'),
+          child: Text(widget.initialQuestion != null ? 'Modifier' : 'Ajouter'),
         ),
       ],
     );
@@ -461,14 +592,18 @@ class _QuestionCard extends StatelessWidget {
   final int index;
   final String question;
   final String type;
+  final List<String>? options;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
 
   const _QuestionCard({
     super.key,
     required this.index,
     required this.question,
     required this.type,
+    this.options,
     required this.onDelete,
+    required this.onEdit,
   });
 
   String _getTypeLabel() {
@@ -554,23 +689,45 @@ class _QuestionCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[800],
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    _getTypeLabel(),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[400],
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[800],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        _getTypeLabel(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[400],
+                        ),
+                      ),
                     ),
-                  ),
+                    if (options != null && options!.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Options: ${options!.take(3).join(', ')}${options!.length > 3 ? '...' : ''}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[500],
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
+          ),
+          IconButton(
+            icon: Icon(FontAwesomeIcons.pen,
+                color: theme.colorScheme.primary, size: 16),
+            onPressed: onEdit,
           ),
           IconButton(
             icon: const Icon(FontAwesomeIcons.trash, color: Colors.red),

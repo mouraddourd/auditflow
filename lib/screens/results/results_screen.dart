@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../powersync/service.dart';
+import '../../hive/service.dart';
 import 'package:intl/intl.dart';
 
-/// Écran de résultats d'audit avec données réelles depuis PowerSync.
+/// Écran de résultats d'audit avec données réelles depuis Hive.
 ///
 /// Reçoit auditId en paramètre de navigation.
 /// Affiche le score global, les scores par catégorie et les problèmes.
@@ -41,7 +41,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
         _error = null;
       });
 
-      final results = await PowerSyncService().getAuditResults(widget.auditId);
+      final results = await HiveService().getAuditResults(widget.auditId);
 
       final audit = results['audit'] as Map<String, dynamic>?;
       final categoryScores = results['categoryScores'] as Map<String, int>;

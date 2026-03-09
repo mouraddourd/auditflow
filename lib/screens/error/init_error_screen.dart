@@ -3,9 +3,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 /// Error screen shown when app initialization fails.
 ///
-/// This is displayed when critical services like PowerSync
-/// fail to initialize on app startup. Provides a retry button
-/// to attempt re-initialization without restarting the app.
+/// This is displayed when critical services like Hive
+/// fail to initialize on app startup.
 class InitErrorScreen extends StatelessWidget {
   final String error;
   final VoidCallback onRetry;

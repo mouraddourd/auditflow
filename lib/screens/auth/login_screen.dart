@@ -5,7 +5,8 @@ import '../../core/widgets/theme_toggle_button.dart';
 import '../../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
-  final void Function(String userId, String token)? onLogin;
+  final void Function(String userId, String token,
+      {Map<String, dynamic>? organization})? onLogin;
   const LoginScreen({super.key, this.onLogin});
 
   @override
@@ -58,7 +59,8 @@ class _LoginScreenState extends State<LoginScreen> {
               email: email, password: password, name: name);
 
       if (result.success && result.user != null && result.token != null) {
-        widget.onLogin?.call(result.user!.id, result.token!);
+        widget.onLogin?.call(result.user!.id, result.token!,
+            organization: result.organization);
       } else {
         setState(() => _errorMessage = result.error ?? 'Erreur inconnue');
       }

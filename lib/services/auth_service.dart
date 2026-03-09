@@ -8,12 +8,14 @@ class AuthResult {
   final String? error;
   final AuthUser? user;
   final String? token;
+  final Map<String, dynamic>? organization;
 
   AuthResult({
     required this.success,
     this.error,
     this.user,
     this.token,
+    this.organization,
   });
 
   factory AuthResult.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class AuthResult {
         success: true,
         user: AuthUser.fromJson(data['user'] as Map<String, dynamic>),
         token: data['token'] as String?,
+        organization: data['organization'] as Map<String, dynamic>?,
       );
     }
     return AuthResult(

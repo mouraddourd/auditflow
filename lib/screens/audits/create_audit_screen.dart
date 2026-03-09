@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../powersync/service.dart';
+import '../../hive/service.dart';
+import 'audit_fill_screen.dart';
 
-/// Create audit screen with real data from PowerSync.
+/// Create audit screen with real data from Hive.
 ///
 /// Two-step flow:
 /// 1. Select a template from organization's templates
@@ -10,7 +11,7 @@ import '../../powersync/service.dart';
 ///
 /// On submit, creates audit locally in SQLite which syncs to backend.
 class CreateAuditScreen extends StatefulWidget {
-  final Function(Widget)? onNavigateToPage;
+  final Future<bool> Function(Widget)? onNavigateToPage;
   final String? preselectedTemplateId;
 
   const CreateAuditScreen({
@@ -37,7 +38,7 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
   /// Selected assignee user ID
   String? _selectedAssigneeId;
 
-  /// Templates loaded from PowerSync
+  /// Templates loaded from Hive
   List<Map<String, dynamic>> _templates = [];
 
   /// Organization members for assignee dropdown
@@ -61,12 +62,12 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
     _loadTemplates();
   }
 
-  /// Loads templates from PowerSync on screen init.
+  /// Loads templates from Hive on screen init.
   Future<void> _loadTemplates() async {
     setState(() => _isLoadingTemplates = true);
 
     try {
-      final templates = await PowerSyncService().getTemplates();
+      final templates = HiveService().getTemplates();
       setState(() {
         _templates = templates;
         _isLoadingTemplates = false;
@@ -95,7 +96,7 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
     setState(() => _isLoadingMembers = true);
 
     try {
-      final members = await PowerSyncService().getOrganizationMembers();
+      final members = HiveService().getOrganizationMembers();
       setState(() {
         _members = members;
         _isLoadingMembers = false;
@@ -106,7 +107,7 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
     }
   }
 
-  /// Creates the audit in PowerSync and navigates back.
+  /// Creates the audit in Hive and navigates back.
   Future<void> _createAudit() async {
     if (_selectedTemplateId == null) {
       setState(() => _validationError = 'Veuillez sélectionner un template');
@@ -123,7 +124,7 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
     });
 
     try {
-      await PowerSyncService().createAudit(
+      final audit = await HiveService().createAudit(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim().isNotEmpty
             ? _descriptionController.text.trim()
@@ -131,7 +132,19 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
         templateId: _selectedTemplateId!,
       );
 
-      if (mounted) Navigator.pop(context, true); // Signal success
+      if (mounted) {
+        // Naviguer directement vers l'écran de remplissage
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AuditFillScreen(
+              auditId: audit['id'] as String,
+              templateId: audit['template_id'] as String,
+              auditTitle: audit['title'] as String? ?? 'Audit',
+            ),
+          ),
+        );
+      }
     } catch (e) {
       debugPrint('Error creating audit: $e');
       setState(() {
@@ -278,7 +291,7 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
                       itemBuilder: (context, index) {
                         final template = _templates[index];
                         return _TemplateSelectionCard(
-                          title: template['title'] as String? ?? 'Sans titre',
+                          title: template['name'] as String? ?? 'Sans titre',
                           category: template['category'] as String? ?? 'Audit',
                           questions: (template['question_count'] as int?) ?? 0,
                           icon:
@@ -317,7 +330,7 @@ class _CreateAuditScreenState extends State<CreateAuditScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        _selectedTemplate?['title'] as String? ?? 'Template',
+                        _selectedTemplate?['name'] as String? ?? 'Template',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),

@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # PostgreSQL with logical replication enabled
+  # PostgreSQL Database
   postgres:
     image: postgres:14-alpine
     environment:
@@ -13,45 +13,9 @@ services:
     volumes:
       - postgres_data_dev:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d
-    command: >
-      postgres 
-      -c wal_level=logical
-      -c max_replication_slots=10
-      -c max_wal_senders=10
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d auditflow"]
       interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  # PowerSync Service (self-hosted)
-  powersync:
-    image: journeyapps/powersync-service:latest
-    environment:
-      - PORT=8080
-      - POWERSYNC_PUBLIC_KEY=|
-          -----BEGIN PUBLIC KEY-----
-          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA02q1EbLLI5SAZPrspXqz
-          iIq8OZOVZlbmUaSHnJNzTfbJjVGdNG6dRMLxyGKBp3eb59qXl5mrrCWeOq7qDDpC
-          cdX3Sv74o5XslASVUktXxiQ9iLJmHlb8oFhw6yEAqagjrgyEpeVIZHKWajcn+0/2
-          3e+CcwQZLS9Kbz/talvyNPKz5ImEOox1mJHtVDXTPODDytxSAHbEa14NHp8DtOPK
-          c8HNtd2QZ59EvhUrlkTRg39z8U4sE3EvYdap1zZ8myGC2qiYGpsFX/dxI31R8kgr
-          SXSVrAvic4v1PmLH/KWppK3tuZ/Nq3wOrb7hfEOG7d9eMPD4Dv2+mw/Dvb3m9qWG
-          8wIDAQAB
-          -----END PUBLIC KEY-----
-      - LOG_LEVEL=debug
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./powersync.yaml:/app/powersync.yaml:ro
-      - ./powersync-sync-rules.yml:/config/powersync-sync-rules.yml:ro
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/probes/liveness', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
-      interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
@@ -64,7 +28,6 @@ services:
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://postgres:titi@postgres:5432/auditflow
-      - POWERSYNC_URL=http://powersync:8080
       - PORT=3000
       - JWT_SECRET=dev-jwt-secret-not-for-production
     ports:
@@ -73,8 +36,6 @@ services:
       - ./backend/src:/app/src:ro
     depends_on:
       postgres:
-        condition: service_healthy
-      powersync:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
