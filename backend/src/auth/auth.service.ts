@@ -25,6 +25,8 @@ export interface AuthResponse {
       id: string;
       email: string;
       name: string | null;
+      phone: string | null;
+      avatar: string | null;
     };
     token: string;
     organization?: {
@@ -91,6 +93,8 @@ export class AuthService {
             id: user.id,
             email: user.email,
             name: user.name,
+            phone: user.phone,
+            avatar: user.avatar,
           },
           token,
           organization: undefined,
@@ -165,6 +169,8 @@ export class AuthService {
             id: user.id,
             email: user.email,
             name: user.name,
+            phone: user.phone,
+            avatar: user.avatar,
           },
           token,
           organization: userOrg ? {
@@ -215,6 +221,31 @@ export class AuthService {
         id: true,
         email: true,
         name: true,
+        phone: true,
+        avatar: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  /**
+   * Update user profile
+   */
+  static async updateProfile(userId: string, data: { name?: string; phone?: string; avatar?: string }) {
+    return prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: data.name,
+        phone: data.phone,
+        avatar: data.avatar,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        avatar: true,
         createdAt: true,
         updatedAt: true,
       },

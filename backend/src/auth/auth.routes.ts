@@ -68,4 +68,31 @@ router.get('/me', requireAuth, async (req: Request, res: Response) => {
   });
 });
 
+/**
+ * PUT /auth/profile
+ * Update current user profile (requires authentication)
+ */
+router.put('/profile', requireAuth, async (req: Request, res: Response) => {
+  const { name, phone, avatar } = req.body;
+
+  try {
+    const updatedUser = await AuthService.updateProfile(req.userId!, {
+      name,
+      phone,
+      avatar,
+    });
+
+    return res.json({
+      success: true,
+      data: updatedUser,
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la mise à jour du profil',
+    });
+  }
+});
+
 export default router;

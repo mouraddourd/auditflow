@@ -26,6 +26,7 @@ class ApiConfig {
   static String get login => '$baseUrl/auth/login';
   static String get register => '$baseUrl/auth/register';
   static String get me => '$baseUrl/auth/me';
+  static String get profile => '$baseUrl/auth/profile';
   static String get organizations => '$baseUrl/organizations';
   static String get health => '$baseUrl/health';
 }

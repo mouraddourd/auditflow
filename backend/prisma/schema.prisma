@@ -12,6 +12,8 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
+  phone     String?  // Numéro de téléphone
+  avatar    String?  // URL ou base64 de la photo de profil
   password  String   // Hashed password
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

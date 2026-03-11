@@ -40,6 +40,8 @@ class AuthUser {
   final String id;
   final String email;
   final String? name;
+  final String? phone;
+  final String? avatar;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -47,6 +49,8 @@ class AuthUser {
     required this.id,
     required this.email,
     this.name,
+    this.phone,
+    this.avatar,
     this.createdAt,
     this.updatedAt,
   });
@@ -56,6 +60,8 @@ class AuthUser {
       id: json['id'] as String,
       email: json['email'] as String,
       name: json['name'] as String?,
+      phone: json['phone'] as String?,
+      avatar: json['avatar'] as String?,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : null,
@@ -197,6 +203,70 @@ class AuthService {
   Future<String?> getUserName() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_userNameKey);
+  }
+
+  /// Get stored user phone
+  Future<String?> getUserPhone() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('user_phone');
+  }
+
+  /// Get stored user avatar
+  Future<String?> getUserAvatar() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('user_avatar');
+  }
+
+  /// Update user profile on server
+  Future<AuthResult> updateProfile({
+    String? name,
+    String? phone,
+    String? avatar,
+  }) async {
+    final token = await getToken();
+    if (token == null) {
+      return AuthResult(success: false, error: 'Non authentifié');
+    }
+
+    try {
+      final response = await _dio.put(
+        ApiConfig.profile,
+        data: {
+          if (name != null) 'name': name,
+          if (phone != null) 'phone': phone,
+          if (avatar != null) 'avatar': avatar,
+        },
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      if (response.data['success'] == true) {
+        final userData = response.data['data'] as Map<String, dynamic>;
+        // Update local storage
+        final prefs = await SharedPreferences.getInstance();
+        if (userData['name'] != null) {
+          await prefs.setString(_userNameKey, userData['name'] as String);
+        }
+        if (userData['phone'] != null) {
+          await prefs.setString('user_phone', userData['phone'] as String);
+        }
+        if (userData['avatar'] != null) {
+          await prefs.setString('user_avatar', userData['avatar'] as String);
+        }
+        return AuthResult(
+          success: true,
+          user: AuthUser.fromJson(userData),
+        );
+      }
+      return AuthResult(
+        success: false,
+        error: response.data['error'] as String? ??
+            'Erreur lors de la mise à jour',
+      );
+    } on DioException catch (e) {
+      return _handleDioError(e);
+    } catch (e) {
+      return AuthResult(success: false, error: 'Erreur inattendue: $e');
+    }
   }
 
   /// Logout and clear stored data

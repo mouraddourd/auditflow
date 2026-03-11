@@ -6,13 +6,16 @@ import '../../core/config/responsive_config.dart';
 
 /// Écran de gestion des catégories permettant de créer, éditer et supprimer des catégories.
 class CategoriesManagementScreen extends StatefulWidget {
-  const CategoriesManagementScreen({super.key});
+  final VoidCallback? onBack;
+  const CategoriesManagementScreen({super.key, this.onBack});
 
   @override
-  State<CategoriesManagementScreen> createState() => _CategoriesManagementScreenState();
+  State<CategoriesManagementScreen> createState() =>
+      _CategoriesManagementScreenState();
 }
 
-class _CategoriesManagementScreenState extends State<CategoriesManagementScreen> {
+class _CategoriesManagementScreenState
+    extends State<CategoriesManagementScreen> {
   List<Map<String, dynamic>> _categories = [];
   bool _isLoading = true;
 
@@ -46,7 +49,9 @@ class _CategoriesManagementScreenState extends State<CategoriesManagementScreen>
       await _loadCategories();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Catégories par défaut ajoutées'), backgroundColor: Colors.green),
+          const SnackBar(
+              content: Text('Catégories par défaut ajoutées'),
+              backgroundColor: Colors.green),
         );
       }
     } catch (e) {
@@ -63,7 +68,8 @@ class _CategoriesManagementScreenState extends State<CategoriesManagementScreen>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirmer la suppression'),
-        content: const Text('Les templates utilisant cette catégorie ne seront pas supprimés, mais la catégorie sera retirée.'),
+        content: const Text(
+            'Les templates utilisant cette catégorie ne seront pas supprimés, mais la catégorie sera retirée.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -72,7 +78,8 @@ class _CategoriesManagementScreenState extends State<CategoriesManagementScreen>
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
+            child:
+                const Text('Supprimer', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -85,7 +92,9 @@ class _CategoriesManagementScreenState extends State<CategoriesManagementScreen>
       await _loadCategories();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Catégorie supprimée'), backgroundColor: Colors.green),
+          const SnackBar(
+              content: Text('Catégorie supprimée'),
+              backgroundColor: Colors.green),
         );
       }
     } catch (e) {
@@ -100,14 +109,16 @@ class _CategoriesManagementScreenState extends State<CategoriesManagementScreen>
   void _showCategoryDialog({Map<String, dynamic>? category}) {
     final isEditing = category != null;
     final nameController = TextEditingController(text: category?['name'] ?? '');
-    final descController = TextEditingController(text: category?['description'] ?? '');
+    final descController =
+        TextEditingController(text: category?['description'] ?? '');
     Color selectedColor = _parseColor(category?['color']);
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(isEditing ? 'Modifier la catégorie' : 'Nouvelle catégorie'),
+          title:
+              Text(isEditing ? 'Modifier la catégorie' : 'Nouvelle catégorie'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -145,11 +156,17 @@ class _CategoriesManagementScreenState extends State<CategoriesManagementScreen>
                           color: color,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: isSelected ? Colors.white : Colors.transparent,
+                            color:
+                                isSelected ? Colors.white : Colors.transparent,
                             width: 3,
                           ),
                           boxShadow: isSelected
-                              ? [BoxShadow(color: color.withOpacity(0.5), blurRadius: 8, spreadRadius: 2)]
+                              ? [
+                                  BoxShadow(
+                                      color: color.withOpacity(0.5),
+                                      blurRadius: 8,
+                                      spreadRadius: 2)
+                                ]
                               : null,
                         ),
                       ),
@@ -178,14 +195,20 @@ class _CategoriesManagementScreenState extends State<CategoriesManagementScreen>
                     await HiveService().updateCategory(
                       id: category['id'],
                       name: nameController.text.trim(),
-                      description: descController.text.trim().isEmpty ? null : descController.text.trim(),
-                      color: '#${selectedColor.value.toRadixString(16).substring(2).toUpperCase()}',
+                      description: descController.text.trim().isEmpty
+                          ? null
+                          : descController.text.trim(),
+                      color:
+                          '#${selectedColor.value.toRadixString(16).substring(2).toUpperCase()}',
                     );
                   } else {
                     await HiveService().createCategory(
                       name: nameController.text.trim(),
-                      description: descController.text.trim().isEmpty ? null : descController.text.trim(),
-                      color: '#${selectedColor.value.toRadixString(16).substring(2).toUpperCase()}',
+                      description: descController.text.trim().isEmpty
+                          ? null
+                          : descController.text.trim(),
+                      color:
+                          '#${selectedColor.value.toRadixString(16).substring(2).toUpperCase()}',
                     );
                   }
 
@@ -194,7 +217,9 @@ class _CategoriesManagementScreenState extends State<CategoriesManagementScreen>
                     _loadCategories();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(isEditing ? 'Catégorie modifiée' : 'Catégorie créée'),
+                        content: Text(isEditing
+                            ? 'Catégorie modifiée'
+                            : 'Catégorie créée'),
                         backgroundColor: Colors.green,
                       ),
                     );
@@ -202,7 +227,9 @@ class _CategoriesManagementScreenState extends State<CategoriesManagementScreen>
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
+                      SnackBar(
+                          content: Text('Erreur: $e'),
+                          backgroundColor: Colors.red),
                     );
                   }
                 }
@@ -246,6 +273,10 @@ class _CategoriesManagementScreenState extends State<CategoriesManagementScreen>
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(FontAwesomeIcons.arrowLeft),
+          onPressed: widget.onBack ?? () => Navigator.of(context).pop(),
+        ),
         title: const Text('Gestion des Catégories'),
         actions: [
           if (_categories.isEmpty)
@@ -255,11 +286,6 @@ class _CategoriesManagementScreenState extends State<CategoriesManagementScreen>
               label: const Text('Par défaut'),
               style: TextButton.styleFrom(foregroundColor: Colors.white),
             ),
-          IconButton(
-            icon: const Icon(FontAwesomeIcons.arrowsRotate),
-            onPressed: _loadCategories,
-            tooltip: 'Rafraîchir',
-          ),
         ],
       ),
       body: _isLoading
@@ -284,12 +310,14 @@ class _CategoriesManagementScreenState extends State<CategoriesManagementScreen>
           const SizedBox(height: 16),
           Text(
             'Aucune catégorie',
-            style: theme.textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+            style:
+                theme.textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
           ),
           const SizedBox(height: 8),
           Text(
             'Créez des catégories pour organiser vos templates',
-            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+            style:
+                theme.textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
           ),
           const SizedBox(height: 24),
           Row(
@@ -324,7 +352,8 @@ class _CategoriesManagementScreenState extends State<CategoriesManagementScreen>
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             leading: Container(
               width: 48,
               height: 48,
@@ -336,14 +365,16 @@ class _CategoriesManagementScreenState extends State<CategoriesManagementScreen>
             ),
             title: Text(
               category['name'] as String? ?? 'Sans nom',
-              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w600),
             ),
             subtitle: category['description'] != null
                 ? Text(
                     category['description'] as String,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: Colors.grey[600]),
                   )
                 : null,
             trailing: Row(
@@ -355,14 +386,18 @@ class _CategoriesManagementScreenState extends State<CategoriesManagementScreen>
                   tooltip: 'Modifier',
                 ),
                 IconButton(
-                  icon: const Icon(FontAwesomeIcons.trash, size: 18, color: Colors.red),
+                  icon: const Icon(FontAwesomeIcons.trash,
+                      size: 18, color: Colors.red),
                   onPressed: () => _deleteCategory(category['id'] as String),
                   tooltip: 'Supprimer',
                 ),
               ],
             ),
           ),
-        ).animate().fadeIn(delay: Duration(milliseconds: 50 * index)).slideX(begin: 0.1);
+        )
+            .animate()
+            .fadeIn(delay: Duration(milliseconds: 50 * index))
+            .slideX(begin: 0.1);
       },
     );
   }

@@ -1,4 +1,5 @@
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 class HiveService {
@@ -13,6 +14,7 @@ class HiveService {
   static const String answersBox = 'answers';
   static const String organizationMembersBox = 'organization_members';
   static const String categoriesBox = 'categories';
+  static const String usersBox = 'users';
 
   bool _initialized = false;
   String? _organizationId;
@@ -26,8 +28,14 @@ class HiveService {
     _organizationId = organizationId;
   }
 
-  void setUser(String? userId) {
+  void setUser(String? userId) async {
     _userId = userId;
+    final prefs = await SharedPreferences.getInstance();
+    if (userId != null) {
+      await prefs.setString('user_id', userId);
+    } else {
+      await prefs.remove('user_id');
+    }
   }
 
   Future<void> initialize() async {
@@ -42,6 +50,11 @@ class HiveService {
     await Hive.openBox(answersBox);
     await Hive.openBox(organizationMembersBox);
     await Hive.openBox(categoriesBox);
+    await Hive.openBox(usersBox);
+
+    // Charger l'ID utilisateur sauvegardé (même clé que AuthService: 'user_id')
+    final prefs = await SharedPreferences.getInstance();
+    _userId = prefs.getString('user_id');
 
     _initialized = true;
   }
@@ -691,6 +704,64 @@ class HiveService {
     }
   }
 
+  // Users
+  List<Map<String, dynamic>> getUsers() {
+    final box = Hive.box(usersBox);
+    return box.values.map((item) => Map<String, dynamic>.from(item)).toList();
+  }
+
+  Map<String, dynamic>? getCurrentUser() {
+    if (_userId == null) return null;
+    final box = Hive.box(usersBox);
+    final user = box.get(_userId);
+    return user != null ? Map<String, dynamic>.from(user) : null;
+  }
+
+  Future<Map<String, dynamic>> createUser(Map<String, dynamic> user) async {
+    final box = Hive.box(usersBox);
+    // Utiliser l'ID fourni ou générer un nouveau (pour le profil local)
+    final id = user['id'] ?? _generateId();
+    final newUser = {
+      'id': id,
+      'name': user['name'] ?? '',
+      'email': user['email'] ?? '',
+      'phone': user['phone'] ?? '',
+      'avatar': user['avatar'] ?? '',
+      'organization_id': _organizationId,
+      'created_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+    await box.put(id, newUser);
+    // Ne PAS écraser _userId si déjà défini par l'authentification
+    if (_userId == null) {
+      _userId = id;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('userId', id);
+    }
+    return newUser;
+  }
+
+  Future<void> updateUser(String id, Map<String, dynamic> updates) async {
+    final box = Hive.box(usersBox);
+    final existing = box.get(id);
+    if (existing == null) throw Exception('User not found');
+
+    final updated = Map<String, dynamic>.from(existing);
+    updated['name'] = updates['name'] ?? updated['name'];
+    updated['email'] = updates['email'] ?? updated['email'];
+    updated['phone'] = updates['phone'] ?? updated['phone'];
+    updated['avatar'] = updates['avatar'] ?? updated['avatar'];
+    updated['updated_at'] = DateTime.now().toIso8601String();
+
+    await box.put(id, updated);
+  }
+
+  Future<void> deleteUser(String id) async {
+    final box = Hive.box(usersBox);
+    await box.delete(id);
+    if (_userId == id) _userId = null;
+  }
+
   Future<void> clear() async {
     await Hive.box(organizationsBox).clear();
     await Hive.box(templatesBox).clear();
@@ -699,7 +770,11 @@ class HiveService {
     await Hive.box(answersBox).clear();
     await Hive.box(organizationMembersBox).clear();
     await Hive.box(categoriesBox).clear();
+    await Hive.box(usersBox).clear();
     _organizationId = null;
     _userId = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user_id');
+    await prefs.remove('organizationId');
   }
 }

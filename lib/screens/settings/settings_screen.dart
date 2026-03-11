@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../core/theme/theme_provider.dart';
-import '../../hive/service.dart';
 import '../categories/categories_management_screen.dart';
+import '../profile/profile_management_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final VoidCallback? onLogout;
@@ -31,7 +31,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final theme = Theme.of(context);
 
     if (_currentPage == 'profil') {
-      return _ProfilePage(onBack: _goBack);
+      return ProfileManagementScreen(onBack: _goBack);
     } else if (_currentPage == 'securite') {
       return _SecurityPage(onBack: _goBack);
     } else if (_currentPage == 'notifications') {
@@ -39,7 +39,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } else if (_currentPage == 'apparence') {
       return _AppearancePage(onBack: _goBack);
     } else if (_currentPage == 'categories') {
-      return const CategoriesManagementScreen();
+      return CategoriesManagementScreen(onBack: _goBack);
     } else if (_currentPage == 'abonnement') {
       return _SubscriptionPage(onBack: _goBack);
     }
@@ -203,82 +203,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }),
                   ],
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfilePage extends StatelessWidget {
-  final VoidCallback onBack;
-  const _ProfilePage({required this.onBack});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(FontAwesomeIcons.arrowLeft),
-          onPressed: onBack,
-        ),
-        title: const Text('Profil'),
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
-        child: Column(
-          children: [
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: theme.colorScheme.primary,
-              child: const Icon(FontAwesomeIcons.user,
-                  size: 50, color: Colors.white),
-            ),
-            const SizedBox(height: 24),
-            TextField(
-              decoration: InputDecoration(
-                labelText: 'Nom complet',
-                filled: true,
-                fillColor: theme.cardTheme.color,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              decoration: InputDecoration(
-                labelText: 'Email',
-                filled: true,
-                fillColor: theme.cardTheme.color,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              decoration: InputDecoration(
-                labelText: 'Téléphone',
-                filled: true,
-                fillColor: theme.cardTheme.color,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {},
-                child: const Text('Sauvegarder'),
               ),
             ),
           ],
