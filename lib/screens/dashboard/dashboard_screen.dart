@@ -65,6 +65,57 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
+  /// Calcule les scores moyens par mois pour le graphique d'évolution
+  List<FlSpot> _calculateMonthlyScores() {
+    final audits = HiveService().getAudits();
+    final completedAudits = audits
+        .where((a) => a['status'] == 'completed' && a['score'] != null)
+        .toList();
+
+    if (completedAudits.isEmpty) {
+      return [const FlSpot(0, 0)];
+    }
+
+    // Grouper par mois (format: "2024-03")
+    final Map<String, List<int>> scoresByMonth = {};
+
+    for (final audit in completedAudits) {
+      final updatedAt = audit['updated_at'] as String?;
+      final score = audit['score'] as int?;
+      if (updatedAt == null || score == null) continue;
+
+      try {
+        final date = DateTime.parse(updatedAt);
+        final monthKey =
+            '${date.year}-${date.month.toString().padLeft(2, '0')}';
+
+        scoresByMonth.putIfAbsent(monthKey, () => []);
+        scoresByMonth[monthKey]!.add(score);
+      } catch (e) {
+        continue;
+      }
+    }
+
+    if (scoresByMonth.isEmpty) {
+      return [const FlSpot(0, 0)];
+    }
+
+    // Trier les mois chronologiquement
+    final sortedMonths = scoresByMonth.keys.toList()..sort();
+
+    // Prendre les 6 derniers mois maximum
+    final recentMonths = sortedMonths.length > 6
+        ? sortedMonths.sublist(sortedMonths.length - 6)
+        : sortedMonths;
+
+    // Créer les spots (x = index, y = score moyen)
+    return recentMonths.asMap().entries.map((entry) {
+      final monthScores = scoresByMonth[entry.value]!;
+      final avgScore = monthScores.reduce((a, b) => a + b) / monthScores.length;
+      return FlSpot(entry.key.toDouble(), avgScore);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -266,25 +317,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 borderData: FlBorderData(show: false),
                                 lineBarsData: [
                                   LineChartBarData(
-                                    // TODO: Calculate from real audit data by month
-                                    spots: [
-                                      FlSpot(0, 65),
-                                      FlSpot(1, 72),
-                                      FlSpot(2, 68),
-                                      FlSpot(3, 75),
-                                      FlSpot(4, 78),
-                                      FlSpot(5, 82),
-                                      FlSpot(
-                                          6,
-                                          (_stats['avg_score'] as num?)
-                                                  ?.toDouble() ??
-                                              78),
-                                    ],
+                                    spots: _calculateMonthlyScores(),
                                     isCurved: true,
                                     color: theme.colorScheme.primary,
                                     barWidth: 3,
                                     isStrokeCapRound: true,
-                                    dotData: FlDotData(show: false),
+                                    dotData: FlDotData(show: true),
                                     belowBarData: BarAreaData(
                                       show: true,
                                       color: theme.colorScheme.primary

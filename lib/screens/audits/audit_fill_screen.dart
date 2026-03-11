@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
@@ -263,6 +264,54 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erreur lors de la finalisation: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Prend une photo depuis la caméra ou la galerie et la sauvegarde
+  Future<void> _pickImage(String questionId, ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        // Copier l'image dans le dossier de l'application pour persistance
+        final appDir = await getApplicationDocumentsDirectory();
+        final imagesDir = Directory('${appDir.path}/audit_images');
+        if (!await imagesDir.exists()) {
+          await imagesDir.create(recursive: true);
+        }
+
+        final fileName =
+            'audit_${widget.auditId}_${questionId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final savedImage =
+            await File(pickedFile.path).copy('${imagesDir.path}/$fileName');
+
+        // Sauvegarder le chemin comme réponse
+        await _saveAnswer(questionId, savedImage.path);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Photo ajoutée'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la prise de photo: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -960,40 +1009,122 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
           }).toList(),
         );
       case 'photo':
-        // TODO: Implémenter la prise de photo avec image_picker
-        return Center(
-          child: Column(
+        final imagePath = currentAnswer?.toString();
+        final hasImage = imagePath != null &&
+            imagePath.isNotEmpty &&
+            File(imagePath).existsSync();
+
+        if (_isReadOnly) {
+          // Mode lecture seule : afficher l'image ou "Non répondu"
+          if (!hasImage) {
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardTheme.color,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color:
+                        Theme.of(context).colorScheme.outline.withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  Icon(FontAwesomeIcons.circleQuestion,
+                      color: Colors.grey[600], size: 20),
+                  const SizedBox(width: 12),
+                  Text('Aucune photo',
+                      style: TextStyle(
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic)),
+                ],
+              ),
+            );
+          }
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.file(
+              File(imagePath),
+              height: 200,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+          );
+        }
+
+        // Mode édition
+        if (hasImage) {
+          return Column(
             children: [
-              Container(
-                width: 200,
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.grey[800],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[700]!),
-                ),
-                child: IconButton(
-                  icon: const Icon(FontAwesomeIcons.camera, size: 48),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Prise de photo à implémenter')),
-                    );
-                  },
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.file(
+                  File(imagePath),
+                  height: 200,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
                 ),
               ),
-              const SizedBox(height: 16),
-              TextButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Galerie à implémenter')),
-                  );
-                },
-                icon: const Icon(FontAwesomeIcons.images),
-                label: const Text('Choisir depuis la galerie'),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () =>
+                          _pickImage(questionId, ImageSource.camera),
+                      icon: const Icon(FontAwesomeIcons.camera, size: 18),
+                      label: const Text('Reprendre'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          _pickImage(questionId, ImageSource.gallery),
+                      icon: const Icon(FontAwesomeIcons.images, size: 18),
+                      label: const Text('Galerie'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () => _saveAnswer(questionId, null),
+                    icon: const Icon(FontAwesomeIcons.trash, color: Colors.red),
+                  ),
+                ],
               ),
             ],
-          ),
+          );
+        }
+
+        // Pas d'image : boutons pour choisir
+        return Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () => _pickImage(questionId, ImageSource.camera),
+                icon: const Icon(FontAwesomeIcons.camera, size: 18),
+                label: const Text('Prendre une photo'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _pickImage(questionId, ImageSource.gallery),
+                icon: const Icon(FontAwesomeIcons.images, size: 18),
+                label: const Text('Galerie'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+          ],
         );
       case 'number':
         // Créer le controller si nécessaire

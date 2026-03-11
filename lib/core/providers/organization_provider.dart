@@ -226,6 +226,58 @@ class OrganizationProvider extends ChangeNotifier {
     return null;
   }
 
+  Future<Organization?> joinOrganization(String token, String userId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // Join organization via API using invite token
+      final response = await Dio().post(
+        '${ApiConfig.organizations}/join',
+        data: {'token': token},
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': userId,
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final orgData = response.data['data'] as Map<String, dynamic>;
+        final org = Organization.fromJson(orgData);
+
+        // Save to Hive
+        final hiveService = HiveService();
+        await hiveService.saveOrganization(org.toJson());
+
+        _organizations.insert(0, org);
+        _activeOrganization = org;
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_activeOrgKey, org.id);
+
+        hiveService.setOrganization(org.id);
+
+        notifyListeners();
+        return org;
+      } else {
+        _error = response.data['error'] ?? 'Token invalide ou expiré';
+      }
+    } on DioException catch (e) {
+      _error = e.response?.data?['error'] ?? 'Erreur de connexion';
+      debugPrint('Error joining organization: ${e.message}');
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('Error joining organization: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+    return null;
+  }
+
   Future<void> setActiveOrganization(Organization org) async {
     _activeOrganization = org;
     final prefs = await SharedPreferences.getInstance();

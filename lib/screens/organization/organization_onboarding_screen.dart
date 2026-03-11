@@ -77,11 +77,20 @@ class _OrganizationOnboardingScreenState
       _error = null;
     });
 
-    // TODO: Implémenter la fonctionnalité de rejoindre une organisation
-    setState(() {
-      _isJoining = false;
-      _error = 'Fonctionnalité non implémentée';
-    });
+    final orgProvider = context.read<OrganizationProvider>();
+    final org = await orgProvider.joinOrganization(
+      _inviteTokenController.text.trim(),
+      widget.userId,
+    );
+
+    if (org != null) {
+      widget.onComplete();
+    } else {
+      setState(() {
+        _isJoining = false;
+        _error = orgProvider.error ?? 'Erreur lors de la connexion';
+      });
+    }
   }
 
   @override
