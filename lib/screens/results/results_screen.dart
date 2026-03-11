@@ -25,9 +25,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
   String? _error;
 
   Map<String, dynamic>? _audit;
-  Map<String, int> _categoryScores = {};
-  List<Map<String, dynamic>> _issues = [];
   int _globalScore = 0;
+  List<Map<String, dynamic>> _questions = [];
+  Map<String, dynamic> _answers = {};
 
   @override
   void initState() {
@@ -46,7 +46,27 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
       final audit = results['audit'] as Map<String, dynamic>?;
       final categoryScores = results['categoryScores'] as Map<String, int>;
-      final issues = results['issues'] as List<Map<String, dynamic>>;
+
+      // Charger les questions et réponses
+      final templateId = audit?['template_id'] as String?;
+      List<Map<String, dynamic>> questions = [];
+      if (templateId != null) {
+        final template = await HiveService().getTemplateById(templateId);
+        if (template != null) {
+          questions = (template['questions'] as List<dynamic>? ?? [])
+              .cast<Map<String, dynamic>>();
+        }
+      }
+
+      // Charger les réponses de l'audit
+      final answersList = HiveService().getAnswersForAudit(widget.auditId);
+      final answersMap = <String, dynamic>{};
+      for (final answer in answersList) {
+        final questionId = answer['question_id'] as String?;
+        if (questionId != null) {
+          answersMap[questionId] = answer['value'];
+        }
+      }
 
       // Calculer le score global (moyenne des scores par catégorie)
       int globalScore = 0;
@@ -58,9 +78,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
       setState(() {
         _audit = audit;
-        _categoryScores = categoryScores;
-        _issues = issues;
         _globalScore = globalScore;
+        _questions = questions;
+        _answers = answersMap;
         _isLoading = false;
       });
     } catch (e) {
@@ -71,39 +91,227 @@ class _ResultsScreenState extends State<ResultsScreen> {
     }
   }
 
-  Color _getScoreColor(int score) {
-    if (score >= 80) return Colors.green;
-    if (score >= 50) return Colors.orange;
-    return Colors.red;
-  }
-
   String _getScoreLabel(int score) {
     if (score >= 80) return 'Conformité satisfaisante';
     if (score >= 50) return 'Conformité moyenne';
     return 'Conformité insuffisante';
   }
 
-  IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'sécurité':
-      case 'securite':
-        return FontAwesomeIcons.shieldHalved;
-      case 'hygiène':
-      case 'hygiene':
-        return FontAwesomeIcons.handSparkles;
-      case 'qualité':
-      case 'qualite':
-        return FontAwesomeIcons.circleCheck;
-      case 'conformité':
-      case 'conformite':
-        return FontAwesomeIcons.scaleBalanced;
-      case 'environnement':
-        return FontAwesomeIcons.leaf;
-      case 'technique':
-        return FontAwesomeIcons.wrench;
+  /// Build answer widget in read-only mode (visual only, no interaction)
+  Widget _buildAnswerReadOnly(Map<String, dynamic> question, dynamic answer) {
+    final type = question['type'] as String?;
+
+    switch (type) {
+      case 'yes_no':
+        return Row(
+          children: [
+            Expanded(
+              child: _buildChoiceButtonReadOnly(
+                icon: FontAwesomeIcons.check,
+                label: 'Conforme',
+                color: Colors.green,
+                isSelected: answer == true || answer == 'true',
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildChoiceButtonReadOnly(
+                icon: FontAwesomeIcons.xmark,
+                label: 'Non conforme',
+                color: Colors.red,
+                isSelected: answer == false || answer == 'false',
+              ),
+            ),
+          ],
+        );
+      case 'scale':
+        final min = (question['min'] as int?) ?? 1;
+        final max = (question['max'] as int?) ?? 5;
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: List.generate(
+            max - min + 1,
+            (index) {
+              final value = min + index;
+              return _buildScaleButtonReadOnly(
+                value: value,
+                isSelected: answer == value || answer == value.toString(),
+              );
+            },
+          ),
+        );
+      case 'text':
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[800],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[700]!),
+          ),
+          child: Text(
+            answer?.toString() ?? 'Non répondu',
+            style: TextStyle(
+              color: answer != null ? Colors.white : Colors.grey[500],
+            ),
+          ),
+        );
+      case 'multiple':
+        final options = question['options'] as List<dynamic>? ?? [];
+        final selectedOptions = answer?.toString().split(',') ?? [];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: options.map((option) {
+            final isSelected = selectedOptions.contains(option.toString());
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Icon(
+                    isSelected
+                        ? FontAwesomeIcons.squareCheck
+                        : FontAwesomeIcons.square,
+                    size: 20,
+                    color: isSelected ? Colors.blue : Colors.grey[600],
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    option.toString(),
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.grey[500],
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        );
+      case 'number':
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[800],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[700]!),
+          ),
+          child: Text(
+            answer?.toString() ?? 'Non répondu',
+            style: TextStyle(
+              color: answer != null ? Colors.white : Colors.grey[500],
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+      case 'date':
+        String dateText = 'Non répondu';
+        if (answer != null) {
+          try {
+            final date = DateTime.parse(answer.toString());
+            dateText = DateFormat('dd/MM/yyyy').format(date);
+          } catch (_) {
+            dateText = answer.toString();
+          }
+        }
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey[800],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey[700]!),
+          ),
+          child: Row(
+            children: [
+              Icon(FontAwesomeIcons.calendar, color: Colors.blue, size: 16),
+              const SizedBox(width: 12),
+              Text(
+                dateText,
+                style: TextStyle(
+                  color: answer != null ? Colors.white : Colors.grey[500],
+                ),
+              ),
+            ],
+          ),
+        );
       default:
-        return FontAwesomeIcons.clipboardList;
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey[800],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            answer?.toString() ?? 'Non répondu',
+            style: TextStyle(color: Colors.grey[500]),
+          ),
+        );
     }
+  }
+
+  Widget _buildChoiceButtonReadOnly({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required bool isSelected,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isSelected ? color.withOpacity(0.2) : Colors.grey[800],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected ? color : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: isSelected ? color : Colors.grey[500], size: 28),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? color : Colors.grey[500],
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScaleButtonReadOnly({
+    required int value,
+    required bool isSelected,
+  }) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isSelected ? Colors.blue : Colors.grey[800],
+        border: Border.all(
+          color: isSelected ? Colors.blue : Colors.grey[600]!,
+          width: 2,
+        ),
+      ),
+      child: Center(
+        child: Text(
+          '$value',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isSelected ? Colors.white : Colors.grey[500],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -218,9 +426,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
               ],
             ),
             const SizedBox(height: 24),
-            // Score card
+            // Score card compact
             Container(
-              padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
@@ -228,293 +436,177 @@ class _ResultsScreenState extends State<ResultsScreen> {
                     theme.colorScheme.secondary,
                   ],
                 ),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Column(
+              child: Row(
                 children: [
-                  const Icon(FontAwesomeIcons.trophy,
-                      size: 48, color: Colors.white),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Score Global',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: Colors.white70,
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(FontAwesomeIcons.trophy,
+                        size: 24, color: Colors.white),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Score Global',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          '$_globalScore%',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Text(
-                    '$_globalScore%',
-                    style: theme.textTheme.displayLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       _getScoreLabel(_globalScore),
-                      style: const TextStyle(color: Colors.white),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            // Category scores
-            if (_categoryScores.isNotEmpty) ...[
-              Text(
-                'Scores par catégorie',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ..._categoryScores.entries.map((entry) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _CategoryScore(
-                      category: entry.key,
-                      score: entry.value,
-                      color: _getScoreColor(entry.value),
-                      icon: _getCategoryIcon(entry.key),
+            // Récapitulatif des réponses (style compact AuditFillScreen)
+            if (_questions.isNotEmpty) ...[
+              ..._questions.asMap().entries.map((entry) {
+                final index = entry.key;
+                final question = entry.value;
+                final questionId = question['id'] as String;
+                final answer = _answers[questionId];
+                final category = question['category'] as String?;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: theme.cardTheme.color,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: theme.brightness == Brightness.dark
+                            ? Colors.white.withOpacity(0.06)
+                            : Colors.black.withOpacity(0.08),
+                      ),
                     ),
-                  )),
-            ],
-            // Issues
-            if (_issues.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              Text(
-                'Points à améliorer',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ..._issues.map((issue) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _IssueCard(
-                      title: issue['question'] as String? ?? 'Question',
-                      category: issue['category'] as String? ?? 'Général',
-                      severity: issue['value'] == 'false' ? 'Haute' : 'Moyenne',
-                      recommendation:
-                          issue['comment'] as String? ?? 'À corriger',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color:
+                                    theme.colorScheme.primary.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Q${index + 1}',
+                                style: TextStyle(
+                                  color: theme.colorScheme.primary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            if (category != null) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  category,
+                                  style: TextStyle(
+                                    color: Colors.orange[700],
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          question['text'] as String? ?? 'Question sans texte',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        _buildAnswerReadOnly(question, answer),
+                      ],
                     ),
-                  )),
+                  ),
+                );
+              }),
             ],
-            const SizedBox(height: 24),
-            // Action buttons
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Export PDF à implémenter')),
-                      );
-                    },
-                    icon: const Icon(FontAwesomeIcons.download),
-                    label: const Text('PDF'),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Export Excel à implémenter')),
-                      );
-                    },
-                    icon: const Icon(FontAwesomeIcons.fileExcel),
-                    label: const Text('Excel'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _CategoryScore extends StatelessWidget {
-  final String category;
-  final int score;
-  final Color color;
-  final IconData icon;
-
-  const _CategoryScore({
-    required this.category,
-    required this.score,
-    required this.color,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.08),
+      bottomNavigationBar: Container(
+        padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
+        decoration: BoxDecoration(
+          color: theme.cardTheme.color,
+          border: Border(
+            top: BorderSide(
+              color: theme.brightness == Brightness.dark
+                  ? Colors.white.withOpacity(0.06)
+                  : Colors.black.withOpacity(0.08),
+            ),
+          ),
+        ),
+        child: SafeArea(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Export PDF à implémenter')),
+              );
+            },
+            icon: const Icon(FontAwesomeIcons.filePdf, size: 18),
+            label: const Text('Exporter PDF'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[600],
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
         ),
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  category,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: score / 100,
-                    backgroundColor: Colors.grey[800],
-                    valueColor: AlwaysStoppedAnimation<Color>(color),
-                    minHeight: 6,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Text(
-            '$score%',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
-
-class _IssueCard extends StatelessWidget {
-  final String title;
-  final String category;
-  final String severity;
-  final String recommendation;
-
-  const _IssueCard({
-    required this.title,
-    required this.category,
-    required this.severity,
-    required this.recommendation,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final severityColor = severity == 'Haute'
-        ? Colors.red
-        : severity == 'Moyenne'
-            ? Colors.orange
-            : Colors.yellow;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: severityColor.withOpacity(0.3),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: severityColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  severity,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: severityColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  category,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(FontAwesomeIcons.lightbulb,
-                  size: 16, color: Colors.yellow[700]),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  recommendation,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.7),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-

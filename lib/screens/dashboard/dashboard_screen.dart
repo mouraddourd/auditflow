@@ -6,7 +6,6 @@ import '../../hive/service.dart';
 import '../../core/config/responsive_config.dart';
 import '../audits/create_audit_screen.dart';
 import '../audits/audit_fill_screen.dart';
-import '../results/results_screen.dart';
 
 /// Dashboard screen with stats from Hive.
 ///
@@ -351,28 +350,18 @@ class _DashboardScreenState extends State<DashboardScreen>
                           padding: const EdgeInsets.only(bottom: 12),
                           child: GestureDetector(
                             onTap: () {
-                              if (status == 'completed') {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ResultsScreen(
-                                        auditId: audit['id'] as String),
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => AuditFillScreen(
+                                    auditId: audit['id'] as String,
+                                    templateId: audit['template_id'] as String,
+                                    auditTitle:
+                                        audit['title'] as String? ?? 'Audit',
+                                    readOnly: status == 'completed',
                                   ),
-                                ).then((_) => _loadStats());
-                              } else {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => AuditFillScreen(
-                                      auditId: audit['id'] as String,
-                                      templateId:
-                                          audit['template_id'] as String,
-                                      auditTitle:
-                                          audit['title'] as String? ?? 'Audit',
-                                    ),
-                                  ),
-                                ).then((_) => _loadStats());
-                              }
+                                ),
+                              ).then((_) => _loadStats());
                             },
                             child: _AuditCard(
                               title: audit['title'] as String? ?? 'Sans titre',
@@ -601,4 +590,3 @@ class _AuditCard extends StatelessWidget {
     return Colors.red;
   }
 }
-

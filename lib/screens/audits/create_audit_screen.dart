@@ -3,6 +3,7 @@ import '../../core/config/responsive_config.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../hive/service.dart';
 import 'audit_fill_screen.dart';
+import '../../main.dart';
 
 /// Create audit screen with real data from Hive.
 ///
@@ -26,7 +27,7 @@ class CreateAuditScreen extends StatefulWidget {
 }
 
 class _CreateAuditScreenState extends State<CreateAuditScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, RouteAware {
   /// Selected template ID (null = step 1, otherwise step 2)
   String? _selectedTemplateId;
 
@@ -62,6 +63,23 @@ class _CreateAuditScreenState extends State<CreateAuditScreen>
     if (widget.preselectedTemplateId != null) {
       _selectedTemplateId = widget.preselectedTemplateId;
     }
+    _loadTemplates();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // S'abonner au RouteObserver pour détecter quand on revient sur cet écran
+    final modalRoute = ModalRoute.of(context);
+    if (modalRoute is PageRoute) {
+      routeObserver.subscribe(this, modalRoute);
+    }
+  }
+
+  @override
+  void didPopNext() {
+    // Appelé quand on revient sur cet écran depuis une autre route
+    // Rafraîchir les templates pour avoir la dernière version
     _loadTemplates();
   }
 

@@ -6,7 +6,6 @@ import '../../hive/service.dart';
 import 'create_audit_screen.dart';
 import 'audit_fill_screen.dart';
 import 'edit_audit_screen.dart';
-import '../results/results_screen.dart';
 
 class AuditsListScreen extends StatefulWidget {
   final Future<bool> Function(Widget)? onNavigateToPage;
@@ -95,7 +94,8 @@ class _AuditsListScreenState extends State<AuditsListScreen> {
                 slivers: [
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
+                      padding:
+                          EdgeInsets.all(ResponsiveConfig.getPadding(context)),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -268,12 +268,18 @@ class _AuditsListScreenState extends State<AuditsListScreen> {
                                 final status =
                                     audit['status'] as String? ?? 'draft';
                                 if (status == 'completed') {
-                                  // Naviguer vers les résultats
+                                  // Naviguer vers AuditFillScreen en mode lecture seule pour voir Q/R
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) => ResultsScreen(
-                                          auditId: audit['id'] as String),
+                                      builder: (_) => AuditFillScreen(
+                                        auditId: audit['id'] as String,
+                                        templateId:
+                                            audit['template_id'] as String,
+                                        auditTitle: audit['title'] as String? ??
+                                            'Audit',
+                                        readOnly: true,
+                                      ),
                                     ),
                                   );
                                 } else {
@@ -613,5 +619,3 @@ class _StatusFilterChip extends StatelessWidget {
     );
   }
 }
-
-

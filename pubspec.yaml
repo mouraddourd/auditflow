@@ -64,6 +64,9 @@ dependencies:
   flutter_timeline: ^0.3.0
   awesome_snackbar_content: ^0.1.6
   font_awesome_flutter: ^10.9.1
+  # PDF Generation
+  pdf: ^3.10.8
+  url_launcher: ^6.2.5
 
 dev_dependencies:
   flutter_test:

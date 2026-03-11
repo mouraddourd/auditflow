@@ -18,6 +18,9 @@ import 'screens/settings/settings_screen.dart';
 import 'screens/error/init_error_screen.dart';
 import 'core/splash/splash_screen.dart';
 
+/// Global RouteObserver for tracking route changes
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
+
 /// App initialization wrapper that handles startup errors.
 ///
 /// Shows an error screen if Hive initialization fails,
@@ -123,6 +126,7 @@ class AuditFlowApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.themeMode,
+            navigatorObservers: [routeObserver],
             builder: (context, child) => ResponsiveBreakpoints.builder(
               child: child!,
               breakpoints: [

@@ -1,24 +1,33 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:path_provider/path_provider.dart';
+import 'package:intl/intl.dart';
 import '../../core/config/responsive_config.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../hive/service.dart';
-import '../results/results_screen.dart';
 
 /// Écran de remplissage d'audit avec questions chargées depuis Hive.
 ///
 /// Reçoit auditId et templateId en paramètres de navigation.
 /// Les questions sont chargées via getTemplateById() et les réponses
 /// sont sauvegardées automatiquement via saveAnswer().
+///
+/// Si l'audit est en statut 'completed', l'écran passe en mode lecture seule
+/// pour visualiser les questions et réponses sans pouvoir les modifier.
 class AuditFillScreen extends StatefulWidget {
   final String auditId;
   final String templateId;
   final String auditTitle;
+  final bool readOnly;
 
   const AuditFillScreen({
     super.key,
     required this.auditId,
     required this.templateId,
     required this.auditTitle,
+    this.readOnly = false,
   });
 
   @override
@@ -33,10 +42,17 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
 
   bool _isLoading = true;
   String? _error;
+  bool _isReadOnly = false; // Mode lecture seule pour audits terminés
 
   List<Map<String, dynamic>> _questions = [];
   Map<String, dynamic>?
       _existingAnswers; // Pour charger les réponses existantes
+
+  /// Score de l'audit (affiché en mode lecture seule)
+  int? _auditScore;
+
+  /// Indique si un export PDF est en cours
+  bool _isExporting = false;
 
   @override
   void initState() {
@@ -55,11 +71,20 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
 
   /// Charge le template et ses questions depuis Hive.
   /// Met à jour le statut de l'audit à 'in_progress' si c'est un draft.
+  /// Détecte si l'audit est terminé pour passer en mode lecture seule.
   Future<void> _loadTemplate() async {
     try {
       setState(() {
         _isLoading = true;
         _error = null;
+      });
+
+      // Vérifier le statut de l'audit pour le mode lecture seule
+      final audit = HiveService().getAuditById(widget.auditId);
+      final isCompleted = audit?['status'] == 'completed';
+      setState(() {
+        _isReadOnly = widget.readOnly || isCompleted;
+        _auditScore = audit?['score'] as int?;
       });
 
       // Charger le template avec ses questions
@@ -77,8 +102,10 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
       final existingAnswers = await _loadExistingAnswers();
 
       // Mettre à jour le statut de l'audit à 'in_progress' si c'est un draft
-      // Cela permet de suivre quels audits ont été commencés
-      await _updateAuditToInProgress();
+      // et si on n'est pas en mode lecture seule
+      if (!_isReadOnly) {
+        await _updateAuditToInProgress();
+      }
 
       // Charger les questions depuis Hive (stockées séparément du template)
       final questions =
@@ -142,8 +169,9 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
 
   /// Sauvegarde la réponse dans Hive (auto-save).
   /// Appelé à chaque changement de réponse pour éviter la perte de données.
+  /// Ne fait rien si en mode lecture seule.
   Future<void> _saveAnswer(String questionId, dynamic answer) async {
-    if (_questions.isEmpty) return;
+    if (_questions.isEmpty || _isReadOnly) return;
 
     setState(() {
       _answers[questionId] = answer;
@@ -227,13 +255,8 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
       );
 
       if (mounted) {
-        // Naviguer vers l'écran de résultats
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ResultsScreen(auditId: widget.auditId),
-          ),
-        );
+        // Retourner simplement à la page précédente
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
@@ -244,6 +267,284 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
           ),
         );
       }
+    }
+  }
+
+  /// Exporte l'audit au format PDF.
+  Future<void> _exportToPdf() async {
+    if (_isExporting) return;
+
+    setState(() {
+      _isExporting = true;
+    });
+
+    try {
+      final pdf = pw.Document();
+      final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
+      final exportDate = dateFormat.format(DateTime.now());
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          header: (context) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      widget.auditTitle,
+                      style: pw.TextStyle(
+                        fontSize: 24,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    if (_auditScore != null)
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: pw.BoxDecoration(
+                          color: PdfColor.fromHex('#4CAF50'),
+                          borderRadius: pw.BorderRadius.circular(20),
+                        ),
+                        child: pw.Text(
+                          '$_auditScore%',
+                          style: pw.TextStyle(
+                            fontSize: 16,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColor.fromHex('#FFFFFF'),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  'Exporté le $exportDate',
+                  style: pw.TextStyle(
+                    fontSize: 12,
+                    color: PdfColor.fromHex('#666666'),
+                  ),
+                ),
+                pw.SizedBox(height: 16),
+                pw.Divider(thickness: 1),
+                pw.SizedBox(height: 16),
+              ],
+            );
+          },
+          build: (context) {
+            return [
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: _questions.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final question = entry.value;
+                  final questionId = question['id'] as String;
+                  final answer =
+                      _answers[questionId] ?? _existingAnswers?[questionId];
+
+                  return pw.Container(
+                    margin: const pw.EdgeInsets.only(bottom: 20),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Row(
+                          children: [
+                            pw.Container(
+                              padding: const pw.EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: pw.BoxDecoration(
+                                color: PdfColor.fromHex('#E3F2FD'),
+                                borderRadius: pw.BorderRadius.circular(4),
+                              ),
+                              child: pw.Text(
+                                'Q${index + 1}',
+                                style: pw.TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: PdfColor.fromHex('#1976D2'),
+                                ),
+                              ),
+                            ),
+                            if (question['category'] != null) ...[
+                              pw.SizedBox(width: 8),
+                              pw.Container(
+                                padding: const pw.EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: pw.BoxDecoration(
+                                  color: PdfColor.fromHex('#FFF3E0'),
+                                  borderRadius: pw.BorderRadius.circular(4),
+                                ),
+                                child: pw.Text(
+                                  question['category'] as String,
+                                  style: pw.TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: pw.FontWeight.bold,
+                                    color: PdfColor.fromHex('#F57C00'),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        pw.SizedBox(height: 8),
+                        pw.Text(
+                          question['text'] as String? ?? 'Question sans texte',
+                          style: pw.TextStyle(
+                            fontSize: 12,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                        pw.SizedBox(height: 8),
+                        pw.Container(
+                          width: double.infinity,
+                          padding: const pw.EdgeInsets.all(12),
+                          decoration: pw.BoxDecoration(
+                            color: PdfColor.fromHex('#F5F5F5'),
+                            borderRadius: pw.BorderRadius.circular(8),
+                          ),
+                          child: pw.Text(
+                            _formatAnswer(
+                              question['type'] as String?,
+                              answer,
+                            ),
+                            style: pw.TextStyle(
+                              fontSize: 11,
+                              color: answer != null
+                                  ? PdfColor.fromHex('#333333')
+                                  : PdfColor.fromHex('#999999'),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ];
+          },
+          footer: (context) {
+            return pw.Column(
+              children: [
+                pw.Divider(thickness: 0.5),
+                pw.SizedBox(height: 4),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'AuditFlow - Rapport d\'audit',
+                      style: pw.TextStyle(
+                        fontSize: 10,
+                        color: PdfColor.fromHex('#999999'),
+                      ),
+                    ),
+                    pw.Text(
+                      'Page ${context.pageNumber} sur ${context.pagesCount}',
+                      style: pw.TextStyle(
+                        fontSize: 10,
+                        color: PdfColor.fromHex('#999999'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+      );
+
+      final directory = await getApplicationDocumentsDirectory();
+      final fileName =
+          'audit_${widget.auditId}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final filePath = '${directory.path}/$fileName';
+      final file = File(filePath);
+
+      await file.writeAsBytes(await pdf.save());
+
+      // Ouvrir le PDF avec l'application par défaut sur Windows
+      await Process.run('cmd', ['/c', 'start', filePath], runInShell: true);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text('PDF ouvert: $fileName'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de l\'export PDF: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isExporting = false;
+        });
+      }
+    }
+  }
+
+  /// Formate la réponse pour l'affichage dans le PDF.
+  String _formatAnswer(String? type, dynamic answer) {
+    if (answer == null || answer.toString().isEmpty) {
+      return 'Non répondu';
+    }
+
+    switch (type) {
+      case 'yes_no':
+        final value = answer.toString().toLowerCase();
+        if (value == 'true' || value == '1') {
+          return 'Conforme';
+        } else if (value == 'false' || value == '0') {
+          return 'Non conforme';
+        }
+        return answer.toString();
+      case 'scale':
+        return 'Note: $answer / 5';
+      case 'multiple':
+        final options = answer.toString().split(',');
+        if (options.isEmpty || options.first.isEmpty) {
+          return 'Aucune sélection';
+        }
+        return options.map((o) => '• $o').join('\n');
+      case 'date':
+        try {
+          final date = DateTime.parse(answer.toString());
+          return DateFormat('dd/MM/yyyy').format(date);
+        } catch (_) {
+          return answer.toString();
+        }
+      case 'number':
+        return answer.toString();
+      case 'text':
+      default:
+        return answer.toString();
     }
   }
 
@@ -317,18 +618,57 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Icon(FontAwesomeIcons.cloudArrowUp,
-                    size: 16, color: Colors.green),
-                const SizedBox(width: 4),
-                Text('Auto-sauvegarde',
-                    style: TextStyle(fontSize: 12, color: Colors.green)),
-              ],
+          if (_isReadOnly && _auditScore != null)
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.green.withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(FontAwesomeIcons.chartPie,
+                      size: 14, color: Colors.green),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$_auditScore%',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+          if (!_isReadOnly)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Icon(FontAwesomeIcons.cloudArrowUp,
+                      size: 16, color: Colors.green),
+                  const SizedBox(width: 4),
+                  Text('Auto-sauvegarde',
+                      style: TextStyle(fontSize: 12, color: Colors.green)),
+                ],
+              ),
+            ),
+          if (_isReadOnly && _auditScore == null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Icon(FontAwesomeIcons.lock, size: 16, color: Colors.orange),
+                  const SizedBox(width: 4),
+                  Text('Lecture seule',
+                      style: TextStyle(fontSize: 12, color: Colors.orange)),
+                ],
+              ),
+            ),
         ],
       ),
       body: Column(
@@ -340,9 +680,17 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
           Expanded(
             child: ListView.builder(
               padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
-              itemCount: _questions.length,
+              itemCount: _questions.length +
+                  (_isReadOnly && _auditScore != null ? 1 : 0),
               itemBuilder: (context, index) {
-                final question = _questions[index];
+                // Carte de score en première position en mode lecture seule
+                if (_isReadOnly && _auditScore != null && index == 0) {
+                  return _buildScoreCard();
+                }
+
+                final questionIndex =
+                    _isReadOnly && _auditScore != null ? index - 1 : index;
+                final question = _questions[questionIndex];
                 final questionId = question['id'] as String;
                 final currentAnswer =
                     _answers[questionId] ?? _existingAnswers?[questionId];
@@ -437,16 +785,68 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                   ),
                 ),
                 const Spacer(),
-                ElevatedButton.icon(
-                  onPressed: _finishAudit,
-                  icon: const Icon(FontAwesomeIcons.check),
-                  label: const Text('Terminer l\'audit'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
+                if (_isReadOnly)
+                  // Bouton Export PDF uniquement
+                  _isExporting
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.blue.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.blue,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Export...',
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ElevatedButton.icon(
+                          onPressed: _exportToPdf,
+                          icon: const Icon(FontAwesomeIcons.filePdf, size: 18),
+                          label: const Text('Exporter PDF'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red[600],
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        )
+                else
+                  ElevatedButton.icon(
+                    onPressed: _finishAudit,
+                    icon: const Icon(FontAwesomeIcons.check),
+                    label: const Text('Terminer l\'audit'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -458,6 +858,11 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
   Widget _buildAnswerWidget(
       Map<String, dynamic> question, dynamic currentAnswer, String questionId) {
     final type = question['type'] as String?;
+
+    // En mode lecture seule, afficher juste la réponse sans interaction
+    if (_isReadOnly) {
+      return _buildAnswerReadOnly(type, currentAnswer, question);
+    }
 
     switch (type) {
       case 'yes_no':
@@ -653,6 +1058,368 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
         return Text('Type de question non supporté: $type');
     }
   }
+
+  /// Affiche une réponse en mode lecture seule (sans aspect interactif)
+  Widget _buildAnswerReadOnly(
+      String? type, dynamic currentAnswer, Map<String, dynamic> question) {
+    final theme = Theme.of(context);
+
+    if (currentAnswer == null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: theme.cardTheme.color,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: theme.colorScheme.outline.withOpacity(0.2),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(FontAwesomeIcons.circleQuestion,
+                color: Colors.grey[600], size: 20),
+            const SizedBox(width: 12),
+            Text(
+              'Non répondu',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    switch (type) {
+      case 'yes_no':
+        final isYes = currentAnswer == true || currentAnswer == 'true';
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isYes
+                ? Colors.green.withOpacity(0.1)
+                : Colors.red.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isYes
+                  ? Colors.green.withOpacity(0.3)
+                  : Colors.red.withOpacity(0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                isYes ? FontAwesomeIcons.check : FontAwesomeIcons.xmark,
+                color: isYes ? Colors.green : Colors.red,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                isYes ? 'Conforme' : 'Non conforme',
+                style: TextStyle(
+                  color: isYes ? Colors.green : Colors.red,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'scale':
+        final min = (question['min'] as int?) ?? 1;
+        final max = (question['max'] as int?) ?? 5;
+        final value =
+            int.tryParse(currentAnswer.toString()) ?? currentAnswer as int;
+        final percentage = (value - min) / (max - min);
+        final color = Color.lerp(Colors.red, Colors.green, percentage)!;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: color.withOpacity(0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    '$value',
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Note: $value / $max',
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: percentage,
+                        backgroundColor: color.withOpacity(0.1),
+                        valueColor: AlwaysStoppedAnimation<Color>(color),
+                        minHeight: 8,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'text':
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: theme.colorScheme.outline.withOpacity(0.2),
+            ),
+          ),
+          child: Text(
+            currentAnswer.toString(),
+            style: theme.textTheme.bodyLarge,
+          ),
+        );
+
+      case 'number':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: theme.colorScheme.primary.withOpacity(0.3),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(FontAwesomeIcons.hashtag,
+                  color: theme.colorScheme.primary, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                currentAnswer.toString(),
+                style: TextStyle(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'date':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.blue.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.blue.withOpacity(0.3),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(FontAwesomeIcons.calendar, color: Colors.blue, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                currentAnswer.toString(),
+                style: TextStyle(
+                  color: Colors.blue,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case 'multiple':
+        final options = currentAnswer
+            .toString()
+            .split(',')
+            .where((s) => s.isNotEmpty)
+            .toList();
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options.map((option) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                option,
+                style: TextStyle(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            );
+          }).toList(),
+        );
+
+      default:
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: theme.colorScheme.outline.withOpacity(0.2),
+            ),
+          ),
+          child: Text(
+            currentAnswer.toString(),
+            style: theme.textTheme.bodyLarge,
+          ),
+        );
+    }
+  }
+
+  /// Carte de score global en mode lecture seule
+  Widget _buildScoreCard() {
+    final theme = Theme.of(context);
+    final score = _auditScore!;
+
+    Color scoreColor;
+    String scoreLabel;
+    IconData scoreIcon;
+
+    if (score >= 80) {
+      scoreColor = Colors.green;
+      scoreLabel = 'Excellent';
+      scoreIcon = FontAwesomeIcons.trophy;
+    } else if (score >= 50) {
+      scoreColor = Colors.orange;
+      scoreLabel = 'À améliorer';
+      scoreIcon = FontAwesomeIcons.circleExclamation;
+    } else {
+      scoreColor = Colors.red;
+      scoreLabel = 'Critique';
+      scoreIcon = FontAwesomeIcons.triangleExclamation;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            scoreColor.withOpacity(0.3),
+            scoreColor.withOpacity(0.1),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: scoreColor.withOpacity(0.5),
+          width: 2,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: scoreColor.withOpacity(0.2),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: scoreColor.withOpacity(0.5),
+                width: 3,
+              ),
+            ),
+            child: Center(
+              child: Icon(
+                scoreIcon,
+                color: scoreColor,
+                size: 28,
+              ),
+            ),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Score Global',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$score%',
+                  style: TextStyle(
+                    color: scoreColor,
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: scoreColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    scoreLabel,
+                    style: TextStyle(
+                      color: scoreColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ChoiceButton extends StatelessWidget {
@@ -746,5 +1513,3 @@ class _ScaleButton extends StatelessWidget {
     );
   }
 }
-
-
