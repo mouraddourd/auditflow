@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../hive/service.dart';
+import '../categories/categories_management_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final VoidCallback? onLogout;
@@ -38,7 +39,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } else if (_currentPage == 'apparence') {
       return _AppearancePage(onBack: _goBack);
     } else if (_currentPage == 'categories') {
-      return _CategoriesPage(onBack: _goBack);
+      return const CategoriesManagementScreen();
     } else if (_currentPage == 'abonnement') {
       return _SubscriptionPage(onBack: _goBack);
     }
@@ -457,153 +458,6 @@ class _AppearancePage extends StatelessWidget {
   }
 }
 
-class _CategoriesPage extends StatefulWidget {
-  final VoidCallback onBack;
-  const _CategoriesPage({required this.onBack});
-
-  @override
-  State<_CategoriesPage> createState() => _CategoriesPageState();
-}
-
-class _CategoriesPageState extends State<_CategoriesPage> {
-  bool _isLoading = true;
-  Map<String, int> _categoryCounts = {};
-
-  // Mapping des couleurs par catégorie
-  static const _categoryColors = {
-    'Qualité': Colors.blue,
-    'Sécurité': Colors.red,
-    'Environnement': Colors.green,
-    'Hygiène': Colors.orange,
-    'Technique': Colors.purple,
-    'Conformité': Colors.teal,
-  };
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCategories();
-  }
-
-  Future<void> _loadCategories() async {
-    try {
-      final templates = HiveService().getTemplates();
-
-      // Compter les templates par catégorie
-      final counts = <String, int>{};
-      for (final template in templates) {
-        final category = template['category'] as String? ?? 'Autre';
-        counts[category] = (counts[category] ?? 0) + 1;
-      }
-
-      setState(() {
-        _categoryCounts = counts;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Color _getCategoryColor(String category) {
-    return _categoryColors[category] ?? Colors.grey;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    // Catégories triées par count décroissant
-    final sortedCategories = _categoryCounts.keys.toList()
-      ..sort((a, b) => _categoryCounts[b]!.compareTo(_categoryCounts[a]!));
-
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(FontAwesomeIcons.arrowLeft),
-          onPressed: widget.onBack,
-        ),
-        title: const Text('Catégories'),
-        actions: [
-          IconButton(
-            icon: const Icon(FontAwesomeIcons.plus),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Ajout de catégorie à implémenter')),
-              );
-            },
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : sortedCategories.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(FontAwesomeIcons.folderOpen,
-                          size: 48, color: Colors.grey),
-                      const SizedBox(height: 16),
-                      Text('Aucune catégorie',
-                          style: theme.textTheme.bodyLarge),
-                      const SizedBox(height: 8),
-                      Text('Créez des templates pour voir les catégories',
-                          style: theme.textTheme.bodyMedium),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: sortedCategories.length,
-                  itemBuilder: (context, index) {
-                    final category = sortedCategories[index];
-                    final count = _categoryCounts[category]!;
-                    final color = _getCategoryColor(category);
-                    return Card(
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: color.withOpacity(0.2),
-                          child: Icon(FontAwesomeIcons.tag, color: color),
-                        ),
-                        title: Text(category),
-                        subtitle:
-                            Text('$count template${count > 1 ? 's' : ''}'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(FontAwesomeIcons.pen),
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text(
-                                          'Édition de catégorie à implémenter')),
-                                );
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(FontAwesomeIcons.trash,
-                                  color: Colors.red),
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text(
-                                          'Suppression de catégorie à implémenter')),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-    );
-  }
-}
-
 class _SubscriptionPage extends StatelessWidget {
   final VoidCallback onBack;
   const _SubscriptionPage({required this.onBack});
@@ -693,5 +547,3 @@ class _SubscriptionPage extends StatelessWidget {
     );
   }
 }
-
-

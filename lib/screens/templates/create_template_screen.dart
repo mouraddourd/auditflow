@@ -16,18 +16,38 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
   final _descriptionController = TextEditingController();
   String? _selectedCategory;
   final List<Map<String, dynamic>> _questions = [];
+  List<Map<String, dynamic>> _categories = [];
 
   bool _isSaving = false;
+  bool _isLoadingCategories = true;
   String? _validationError;
 
-  final List<String> _categories = [
-    'Qualité',
-    'Sécurité',
-    'Environnement',
-    'Hygiène',
-    'Technique',
-    'Conformité',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final categories = HiveService().getCategories();
+      if (categories.isEmpty) {
+        await HiveService().seedDefaultCategories();
+        final seeded = HiveService().getCategories();
+        setState(() {
+          _categories = seeded;
+          _isLoadingCategories = false;
+        });
+      } else {
+        setState(() {
+          _categories = categories;
+          _isLoadingCategories = false;
+        });
+      }
+    } catch (e) {
+      setState(() => _isLoadingCategories = false);
+    }
+  }
 
   void _addQuestion() {
     showDialog(
@@ -212,9 +232,10 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                       ),
                     ),
                     items: _categories.map((cat) {
+                      final catName = cat['name'] as String;
                       return DropdownMenuItem(
-                        value: cat,
-                        child: Text(cat),
+                        value: catName,
+                        child: Text(catName),
                       );
                     }).toList(),
                     onChanged: (value) =>
@@ -532,5 +553,3 @@ class _QuestionCard extends StatelessWidget {
     );
   }
 }
-
-

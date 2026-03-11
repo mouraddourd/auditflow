@@ -18,24 +18,32 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
   final _descriptionController = TextEditingController();
   String? _selectedCategory;
   final List<Map<String, dynamic>> _questions = [];
+  List<Map<String, dynamic>> _categories = [];
 
   bool _isLoading = true;
   bool _isSaving = false;
   String? _error;
   String? _validationError;
 
-  final List<String> _categories = [
-    'Qualité',
-    'Sécurité',
-    'Environnement',
-    'Hygiène',
-    'Technique',
-    'Conformité',
-  ];
-
   @override
   void initState() {
     super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final categories = HiveService().getCategories();
+      if (categories.isEmpty) {
+        await HiveService().seedDefaultCategories();
+        final seeded = HiveService().getCategories();
+        setState(() => _categories = seeded);
+      } else {
+        setState(() => _categories = categories);
+      }
+    } catch (e) {
+      // Continue with empty categories
+    }
     _loadTemplate();
   }
 
@@ -241,9 +249,10 @@ class _EditTemplateScreenState extends State<EditTemplateScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              items: _categories
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                  .toList(),
+              items: _categories.map((cat) {
+                final catName = cat['name'] as String;
+                return DropdownMenuItem(value: catName, child: Text(catName));
+              }).toList(),
               onChanged: (value) {
                 setState(() => _selectedCategory = value);
               },

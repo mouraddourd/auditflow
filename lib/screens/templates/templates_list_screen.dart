@@ -23,20 +23,27 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
   bool _isLoading = true;
   String? _error;
   List<Map<String, dynamic>> _templates = [];
-
-  final List<String> _categories = [
-    'Tous',
-    'Qualité',
-    'Sécurité',
-    'Environnement',
-    'Hygiène',
-    'Technique',
-    'Conformité',
-  ];
+  List<Map<String, dynamic>> _categories = [];
 
   @override
   void initState() {
     super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final categories = HiveService().getCategories();
+      if (categories.isEmpty) {
+        await HiveService().seedDefaultCategories();
+        final seeded = HiveService().getCategories();
+        setState(() => _categories = seeded);
+      } else {
+        setState(() => _categories = categories);
+      }
+    } catch (e) {
+      // Continue with empty categories
+    }
     _loadTemplates();
   }
 
@@ -211,20 +218,16 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
-                            children: _categories.map((category) {
-                              final isSelected =
-                                  _selectedCategory == category ||
-                                      (category == 'Tous' &&
-                                          _selectedCategory == null);
-                              return Padding(
+                            children: [
+                              // Chip "Tous"
+                              Padding(
                                 padding: const EdgeInsets.only(right: 8),
                                 child: FilterChip(
-                                  label: Text(category),
-                                  selected: isSelected,
+                                  label: const Text('Tous'),
+                                  selected: _selectedCategory == null,
                                   onSelected: (selected) {
                                     setState(() {
-                                      _selectedCategory =
-                                          category == 'Tous' ? null : category;
+                                      _selectedCategory = null;
                                       _currentPage = 1;
                                     });
                                   },
@@ -233,16 +236,47 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
                                       .withOpacity(0.2),
                                   checkmarkColor: theme.colorScheme.primary,
                                   labelStyle: TextStyle(
-                                    color: isSelected
+                                    color: _selectedCategory == null
                                         ? theme.colorScheme.primary
                                         : theme.colorScheme.onSurface,
-                                    fontWeight: isSelected
+                                    fontWeight: _selectedCategory == null
                                         ? FontWeight.w600
                                         : FontWeight.normal,
                                   ),
                                 ),
-                              );
-                            }).toList(),
+                              ),
+                              // Chips des catégories dynamiques
+                              ..._categories.map((category) {
+                                final catName = category['name'] as String;
+                                final isSelected = _selectedCategory == catName;
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: FilterChip(
+                                    label: Text(catName),
+                                    selected: isSelected,
+                                    onSelected: (selected) {
+                                      setState(() {
+                                        _selectedCategory =
+                                            selected ? catName : null;
+                                        _currentPage = 1;
+                                      });
+                                    },
+                                    backgroundColor: theme.cardTheme.color,
+                                    selectedColor: theme.colorScheme.primary
+                                        .withOpacity(0.2),
+                                    checkmarkColor: theme.colorScheme.primary,
+                                    labelStyle: TextStyle(
+                                      color: isSelected
+                                          ? theme.colorScheme.primary
+                                          : theme.colorScheme.onSurface,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 16),

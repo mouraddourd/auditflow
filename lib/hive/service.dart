@@ -12,6 +12,7 @@ class HiveService {
   static const String auditsBox = 'audits';
   static const String answersBox = 'answers';
   static const String organizationMembersBox = 'organization_members';
+  static const String categoriesBox = 'categories';
 
   bool _initialized = false;
   String? _organizationId;
@@ -40,6 +41,7 @@ class HiveService {
     await Hive.openBox(auditsBox);
     await Hive.openBox(answersBox);
     await Hive.openBox(organizationMembersBox);
+    await Hive.openBox(categoriesBox);
 
     _initialized = true;
   }
@@ -606,6 +608,89 @@ class HiveService {
         .toList();
   }
 
+  // Categories
+  List<Map<String, dynamic>> getCategories() {
+    final box = Hive.box(categoriesBox);
+    return box.values
+        .where((c) => c['organization_id'] == _organizationId)
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> createCategory({
+    required String name,
+    String? description,
+    String? color,
+  }) async {
+    if (_organizationId == null) throw StateError('No organization selected');
+
+    final id = _generateId();
+    final now = DateTime.now().toIso8601String();
+
+    final category = {
+      'id': id,
+      'name': name,
+      'description': description,
+      'color': color,
+      'organization_id': _organizationId,
+      'created_at': now,
+      'updated_at': now,
+    };
+
+    final box = Hive.box(categoriesBox);
+    await box.put(id, category);
+
+    return category;
+  }
+
+  Future<void> updateCategory({
+    required String id,
+    required String name,
+    String? description,
+    String? color,
+  }) async {
+    final box = Hive.box(categoriesBox);
+    final category = box.get(id);
+    if (category == null) return;
+
+    final now = DateTime.now().toIso8601String();
+    final updated = Map<String, dynamic>.from(category);
+    updated['name'] = name;
+    updated['description'] = description;
+    updated['color'] = color;
+    updated['updated_at'] = now;
+
+    await box.put(id, updated);
+  }
+
+  Future<void> deleteCategory(String id) async {
+    final box = Hive.box(categoriesBox);
+    await box.delete(id);
+  }
+
+  Future<void> seedDefaultCategories() async {
+    if (_organizationId == null) return;
+
+    final existing = getCategories();
+    if (existing.isNotEmpty) return;
+
+    final defaults = [
+      {'name': 'Qualité', 'color': '#4CAF50'},
+      {'name': 'Sécurité', 'color': '#F44336'},
+      {'name': 'Environnement', 'color': '#2196F3'},
+      {'name': 'Hygiène', 'color': '#FF9800'},
+      {'name': 'Technique', 'color': '#9C27B0'},
+      {'name': 'Conformité', 'color': '#607D8B'},
+    ];
+
+    for (final cat in defaults) {
+      await createCategory(
+        name: cat['name']!,
+        color: cat['color'],
+      );
+    }
+  }
+
   Future<void> clear() async {
     await Hive.box(organizationsBox).clear();
     await Hive.box(templatesBox).clear();
@@ -613,6 +698,7 @@ class HiveService {
     await Hive.box(auditsBox).clear();
     await Hive.box(answersBox).clear();
     await Hive.box(organizationMembersBox).clear();
+    await Hive.box(categoriesBox).clear();
     _organizationId = null;
     _userId = null;
   }
