@@ -3,6 +3,7 @@ import '../../core/config/responsive_config.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../hive/service.dart';
 import '../../core/widgets/question_dialog.dart';
+import '../../services/sync_service.dart';
 
 class CreateTemplateScreen extends StatefulWidget {
   const CreateTemplateScreen({super.key});
@@ -105,13 +106,21 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
     });
 
     try {
-      await HiveService().createTemplate(
+      final template = await HiveService().createTemplate(
         name: _titleController.text.trim(),
         category: _selectedCategory!,
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
         questions: _questions,
+      );
+
+      // Enqueue sync to backend
+      await SyncService().enqueue(
+        entityType: 'template',
+        entityId: template['id'],
+        mutationType: MutationType.create,
+        data: template,
       );
 
       if (mounted) {

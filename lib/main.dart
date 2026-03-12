@@ -8,6 +8,7 @@ import 'core/theme/theme_provider.dart';
 import 'core/widgets/theme_toggle_button.dart';
 import 'core/providers/organization_provider.dart';
 import 'services/auth_service.dart';
+import 'services/sync_service.dart';
 import 'hive/service.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/organization/organization_onboarding_screen.dart';
@@ -57,6 +58,9 @@ class _AppInitializerState extends State<AppInitializer> {
     try {
       // Hive must be initialized before any database operations
       await HiveService().initialize();
+
+      // Initialize sync service for offline-first functionality
+      await SyncService().initialize();
 
       setState(() {
         _initialized = true;

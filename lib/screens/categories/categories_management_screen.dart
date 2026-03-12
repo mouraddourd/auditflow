@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../../services/sync_service.dart';
 import '../../hive/service.dart';
 import '../../core/config/responsive_config.dart';
 
@@ -201,14 +202,32 @@ class _CategoriesManagementScreenState
                       color:
                           '#${selectedColor.value.toRadixString(16).substring(2).toUpperCase()}',
                     );
+
+                    // Enqueue sync
+                    await SyncService().enqueue(
+                      entityType: 'category',
+                      entityId: category['id'],
+                      mutationType: MutationType.update,
+                      data: HiveService().getCategories().firstWhere(
+                            (c) => c['id'] == category['id'],
+                            orElse: () => category,
+                          ),
+                    );
                   } else {
-                    await HiveService().createCategory(
+                    final created = await HiveService().createCategory(
                       name: nameController.text.trim(),
                       description: descController.text.trim().isEmpty
                           ? null
                           : descController.text.trim(),
                       color:
                           '#${selectedColor.value.toRadixString(16).substring(2).toUpperCase()}',
+                    );
+
+                    await SyncService().enqueue(
+                      entityType: 'category',
+                      entityId: created['id'],
+                      mutationType: MutationType.create,
+                      data: created,
                     );
                   }
 

@@ -2,6 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import organizationRoutes from './organizations/organization.routes';
 import authRoutes from './auth/auth.routes';
+import templateRoutes from './templates/template.routes';
+import auditRoutes from './audits/audit.routes';
+import categoryRoutes from './categories/category.routes';
 import './config/env'; // Validate environment variables at startup
 
 const app = express();
@@ -18,6 +21,9 @@ app.get('/health', (_req, res) => {
 // API Routes
 app.use('/auth', authRoutes);
 app.use('/organizations', organizationRoutes);
+app.use('/templates', templateRoutes);
+app.use('/audits', auditRoutes);
+app.use('/categories', categoryRoutes);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

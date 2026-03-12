@@ -6,6 +6,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../core/theme/theme_provider.dart';
 import '../categories/categories_management_screen.dart';
 import '../profile/profile_management_screen.dart';
+import '../../services/sync_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final VoidCallback? onLogout;
@@ -42,6 +43,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return CategoriesManagementScreen(onBack: _goBack);
     } else if (_currentPage == 'abonnement') {
       return _SubscriptionPage(onBack: _goBack);
+    } else if (_currentPage == 'sync') {
+      return _SyncPage(onBack: _goBack);
     }
 
     final settingsSections = [
@@ -82,6 +85,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             'title': 'Catégories',
             'subtitle': 'Gérer les catégories',
             'page': 'categories'
+          },
+          {
+            'icon': FontAwesomeIcons.rotate,
+            'title': 'Synchronisation',
+            'subtitle': 'Gérer les données hors-ligne',
+            'page': 'sync'
           },
         ],
       },
@@ -467,6 +476,242 @@ class _SubscriptionPage extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SyncPage extends StatefulWidget {
+  final VoidCallback onBack;
+  const _SyncPage({required this.onBack});
+
+  @override
+  State<_SyncPage> createState() => _SyncPageState();
+}
+
+class _SyncPageState extends State<_SyncPage> {
+  final SyncService _syncService = SyncService();
+  int _pendingCount = 0;
+  int _failedCount = 0;
+  bool _isSyncing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateCounts();
+  }
+
+  void _updateCounts() {
+    final pending = _syncService.getPendingMutations();
+    setState(() {
+      _pendingCount = pending.where((e) => e.retryCount < 3).length;
+      _failedCount = pending.where((e) => e.retryCount >= 3).length;
+      _isSyncing = _syncService.isSyncing;
+    });
+  }
+
+  Future<void> _processQueue() async {
+    setState(() => _isSyncing = true);
+    await _syncService.processQueue();
+    _updateCounts();
+  }
+
+  Future<void> _retryFailed() async {
+    setState(() => _isSyncing = true);
+    await _syncService.retryFailed();
+    _updateCounts();
+  }
+
+  Future<void> _pullAll() async {
+    setState(() => _isSyncing = true);
+    await _syncService.pullAll();
+    _updateCounts();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(FontAwesomeIcons.arrowLeft),
+          onPressed: widget.onBack,
+        ),
+        title: const Text('Synchronisation'),
+      ),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Status card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          _isSyncing
+                              ? FontAwesomeIcons.rotate
+                              : (_failedCount > 0
+                                  ? FontAwesomeIcons.circleExclamation
+                                  : FontAwesomeIcons.circleCheck),
+                          color: _isSyncing
+                              ? Colors.blue
+                              : (_failedCount > 0 ? Colors.red : Colors.green),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          _isSyncing
+                              ? 'Synchronisation en cours...'
+                              : (_failedCount > 0
+                                  ? 'Erreurs de synchronisation'
+                                  : 'Synchronisé'),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatBox(
+                            'En attente',
+                            _pendingCount,
+                            Colors.orange,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildStatBox(
+                            'Échoués',
+                            _failedCount,
+                            Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Actions
+            Text(
+              'Actions',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(FontAwesomeIcons.rotate),
+                    title: const Text('Synchroniser maintenant'),
+                    subtitle: const Text('Envoyer les données en attente'),
+                    trailing: _isSyncing
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(FontAwesomeIcons.chevronRight),
+                    onTap: _isSyncing ? null : _processQueue,
+                  ),
+                  const Divider(),
+                  ListTile(
+                    leading: Icon(
+                      FontAwesomeIcons.arrowsRotate,
+                      color: _failedCount > 0 ? Colors.red : null,
+                    ),
+                    title: const Text('Réessayer les échoués'),
+                    subtitle: Text('$_failedCount élément(s) en erreur'),
+                    trailing: _isSyncing || _failedCount == 0
+                        ? null
+                        : const Icon(FontAwesomeIcons.chevronRight),
+                    onTap:
+                        _isSyncing || _failedCount == 0 ? null : _retryFailed,
+                  ),
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(FontAwesomeIcons.cloudArrowDown),
+                    title: const Text('Récupérer les données'),
+                    subtitle: const Text('Télécharger depuis le serveur'),
+                    trailing: _isSyncing
+                        ? null
+                        : const Icon(FontAwesomeIcons.chevronRight),
+                    onTap: _isSyncing ? null : _pullAll,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Info
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    FontAwesomeIcons.circleInfo,
+                    color: theme.colorScheme.primary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Les données sont automatiquement synchronisées quand une connexion internet est disponible.',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatBox(String label, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Text(
+            '$count',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

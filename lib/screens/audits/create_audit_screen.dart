@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../hive/service.dart';
 import 'audit_fill_screen.dart';
 import '../../main.dart';
+import '../../services/sync_service.dart';
 
 /// Create audit screen with real data from Hive.
 ///
@@ -151,6 +152,14 @@ class _CreateAuditScreenState extends State<CreateAuditScreen>
             ? _descriptionController.text.trim()
             : null,
         templateId: _selectedTemplateId!,
+      );
+
+      // Enqueue sync to backend
+      await SyncService().enqueue(
+        entityType: 'audit',
+        entityId: audit['id'],
+        mutationType: MutationType.create,
+        data: audit,
       );
 
       if (mounted) {

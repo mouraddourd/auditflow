@@ -15,6 +15,7 @@ class HiveService {
   static const String organizationMembersBox = 'organization_members';
   static const String categoriesBox = 'categories';
   static const String usersBox = 'users';
+  static const String syncQueueBox = 'sync_queue';
 
   bool _initialized = false;
   String? _organizationId;
@@ -51,6 +52,7 @@ class HiveService {
     await Hive.openBox(organizationMembersBox);
     await Hive.openBox(categoriesBox);
     await Hive.openBox(usersBox);
+    await Hive.openBox(syncQueueBox);
 
     // Charger l'ID utilisateur sauvegardé (même clé que AuthService: 'user_id')
     final prefs = await SharedPreferences.getInstance();
@@ -130,6 +132,7 @@ class HiveService {
       'created_at': now,
       'updated_at': now,
       'question_count': questions.length,
+      'sync_status': 'pending',
     };
 
     final box = Hive.box(templatesBox);
@@ -149,6 +152,7 @@ class HiveService {
         'required': question['required'] == true ? 1 : 0,
         'options': question['options'], // Pour les questions de type multiple
         'created_at': now,
+        'sync_status': 'pending',
       });
     }
 
@@ -191,6 +195,7 @@ class HiveService {
     updatedTemplate['description'] = description;
     updatedTemplate['updated_at'] = now;
     updatedTemplate['question_count'] = questions.length;
+    updatedTemplate['sync_status'] = 'pending';
 
     await box.put(id, updatedTemplate);
 
@@ -218,6 +223,7 @@ class HiveService {
         'required': question['required'] == true ? 1 : 0,
         'options': question['options'], // Pour les questions de type multiple
         'created_at': now,
+        'sync_status': 'pending',
       };
 
       await questionsBoxInstance.put(questionId, questionData);
@@ -286,6 +292,7 @@ class HiveService {
       copiedTemplate['original_template_id'] = templateId;
       copiedTemplate['created_at'] = now;
       copiedTemplate['updated_at'] = now;
+      copiedTemplate['sync_status'] = 'pending';
 
       await Hive.box(templatesBox).put(auditTemplateId, copiedTemplate);
 
@@ -302,6 +309,7 @@ class HiveService {
         questionCopy['id'] = newQuestionId;
         questionCopy['template_id'] = auditTemplateId;
         questionCopy['created_at'] = now;
+        questionCopy['sync_status'] = 'pending';
         await questionsBoxInstance.put(newQuestionId, questionCopy);
       }
     }
@@ -320,6 +328,7 @@ class HiveService {
       'completed_at': null,
       'created_at': now,
       'updated_at': now,
+      'sync_status': 'pending',
     };
 
     final box = Hive.box(auditsBox);
@@ -394,6 +403,7 @@ class HiveService {
     if (score != null) {
       updatedAudit['score'] = score;
     }
+    updatedAudit['sync_status'] = 'pending';
 
     await box.put(auditId, updatedAudit);
   }
@@ -408,6 +418,7 @@ class HiveService {
     final updatedAudit = Map<String, dynamic>.from(audit);
     updatedAudit['score'] = progressPercent;
     updatedAudit['updated_at'] = now;
+    updatedAudit['sync_status'] = 'pending';
 
     await box.put(auditId, updatedAudit);
   }
@@ -423,6 +434,7 @@ class HiveService {
     if (title != null) updatedAudit['title'] = title;
     if (description != null) updatedAudit['description'] = description;
     updatedAudit['updated_at'] = now;
+    updatedAudit['sync_status'] = 'pending';
 
     await box.put(id, updatedAudit);
   }
@@ -468,6 +480,7 @@ class HiveService {
       existing['comment'] = comment;
       existing['score'] = score;
       existing['updated_at'] = now;
+      existing['sync_status'] = 'pending';
       await answersBoxInstance.put(existingKey, existing);
     } else {
       final id = _generateId();
@@ -480,6 +493,7 @@ class HiveService {
         'score': score,
         'created_at': now,
         'updated_at': now,
+        'sync_status': 'pending',
       });
     }
   }
@@ -648,6 +662,7 @@ class HiveService {
       'organization_id': _organizationId,
       'created_at': now,
       'updated_at': now,
+      'sync_status': 'pending',
     };
 
     final box = Hive.box(categoriesBox);
@@ -672,6 +687,7 @@ class HiveService {
     updated['description'] = description;
     updated['color'] = color;
     updated['updated_at'] = now;
+    updated['sync_status'] = 'pending';
 
     await box.put(id, updated);
   }

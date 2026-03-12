@@ -12,15 +12,13 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
-  phone     String?  // Numéro de téléphone
-  avatar    String?  // URL ou base64 de la photo de profil
-  password  String   // Hashed password
+  phone     String?
+  avatar    String?
+  password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  fcmTokens           FcmToken[]
-  notifications       Notification[]
   audits              Audit[]
   templates           Template[]
   organizationMembers OrganizationMember[]
@@ -34,7 +32,7 @@ model Organization {
   id          String   @id @default(cuid())
   name        String
   slug        String   @unique
-  licenseTier String?  // For future licensing: "free" | "starter" | "pro" | "enterprise"
+  licenseTier String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -43,6 +41,7 @@ model Organization {
   invitations  Invitation[]
   audits       Audit[]
   templates    Template[]
+  categories   Category[]
 
   @@index([slug])
   @@map("organizations")
@@ -50,11 +49,11 @@ model Organization {
 
 // Organization Member (User <-> Organization relationship)
 model OrganizationMember {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   userId         String
   organizationId String
-  role           String       @default("member") // "owner" | "admin" | "member"
-  joinedAt       DateTime     @default(now())
+  role           String   @default("member") // "owner" | "admin" | "member"
+  joinedAt       DateTime @default(now())
 
   // Relations
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -68,19 +67,19 @@ model OrganizationMember {
 
 // Invitation to join an organization
 model Invitation {
-  id             String     @id @default(cuid())
+  id             String   @id @default(cuid())
   email          String
   organizationId String
-  invitedBy      String     // userId who sent the invitation
-  token          String     @unique
-  status         String     @default("pending") // "pending" | "accepted" | "expired"
+  invitedBy      String
+  token          String   @unique
+  status         String   @default("pending")
   expiresAt      DateTime
-  createdAt      DateTime   @default(now())
+  createdAt      DateTime @default(now())
   acceptedAt     DateTime?
 
   // Relations
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  invitedByUser User        @relation(fields: [invitedBy], references: [id], onDelete: Cascade)
+  invitedByUser User         @relation(fields: [invitedBy], references: [id], onDelete: Cascade)
 
   @@index([email])
   @@index([organizationId])
@@ -88,14 +87,31 @@ model Invitation {
   @@map("invitations")
 }
 
+// Category for templates
+model Category {
+  id             String   @id // UUID from client
+  name           String
+  description    String?
+  color          String?
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("categories")
+}
+
 // Audit Template
 model Template {
-  id             String   @id @default(cuid())
+  id             String   @id // UUID from client
   name           String
   description    String?
   category       String?
-  userId         String   // Creator (audit trail)
-  organizationId String   // Organization ownership
+  userId         String
+  organizationId String
   isPublic       Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -114,17 +130,18 @@ model Template {
 
 // Question dans un template
 model Question {
-  id         String   @id @default(cuid())
+  id         String   @id // UUID from client
   templateId String
-  type       String   // "boolean" | "scale" | "text"
+  type       String   // "boolean" | "scale" | "text" | "yes_no"
   text       String
   order      Int      @default(0)
   required   Boolean  @default(true)
+  options    Json?    // Options pour questions multiples
   createdAt  DateTime @default(now())
 
   // Relations
-  template  Template   @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  answers   Answer[]
+  template Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  answers  Answer[]
 
   @@index([templateId])
   @@map("questions")
@@ -132,14 +149,14 @@ model Question {
 
 // Audit (instance d'un template)
 model Audit {
-  id             String    @id @default(cuid())
+  id             String    @id // UUID from client
   title          String
   description    String?
-  status         String    @default("draft") // "draft" | "in_progress" | "completed"
-  score          Int?      // Score calculé (0-100)
+  status         String    @default("draft")
+  score          Int?
   templateId     String
-  userId         String    // Creator (audit trail)
-  organizationId String    // Organization ownership
+  userId         String
+  organizationId String
   startedAt      DateTime?
   completedAt    DateTime?
   createdAt      DateTime  @default(now())
@@ -160,14 +177,14 @@ model Audit {
 
 // Réponse à une question dans un audit
 model Answer {
-  id        String   @id @default(cuid())
-  auditId   String
+  id         String   @id // UUID from client
+  auditId    String
   questionId String
-  value     String   // "yes" | "no" | "1-5" | text
-  comment   String?
-  score     Int?     // Score de cette réponse
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  value      String
+  comment    String?
+  score      Int?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   // Relations
   audit    Audit    @relation(fields: [auditId], references: [id], onDelete: Cascade)
@@ -176,43 +193,4 @@ model Answer {
   @@index([auditId])
   @@index([questionId])
   @@map("answers")
-}
-
-// FCM Token for push notifications
-model FcmToken {
-  id         String   @id @default(cuid())
-  token      String   @unique
-  userId     String
-  deviceType String   @default("web")
-  deviceId   String?
-  isActive   Boolean  @default(true)
-  lastUsed   DateTime @default(now())
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([token])
-  @@map("fcm_tokens")
-}
-
-// Notification history
-model Notification {
-  id        String            @id @default(cuid())
-  userId    String
-  title     String
-  body      String
-  type      String            @default("custom")
-  data      Json?
-  readAt    DateTime?
-  createdAt DateTime          @default(now())
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([createdAt])
-  @@map("notifications")
 }

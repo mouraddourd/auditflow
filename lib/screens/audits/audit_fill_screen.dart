@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../core/config/responsive_config.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../hive/service.dart';
+import '../../services/sync_service.dart';
 
 /// Écran de remplissage d'audit avec questions chargées depuis Hive.
 ///
@@ -202,6 +203,9 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
       // Mettre à jour le score de progression dans l'audit
       final progressPercent = (progress * 100).round();
       await HiveService().updateAuditProgress(widget.auditId, progressPercent);
+
+      // Enqueue sync for answer (debounced - will batch on audit completion)
+      // Answers are synced as part of the audit update
     } catch (e) {
       // Afficher un snackbar d'erreur mais continuer
       if (mounted) {
@@ -254,6 +258,25 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
         'completed',
         score: avgScore,
       );
+
+      // Enqueue sync for audit completion
+      final updatedAudit = HiveService().getAuditById(widget.auditId);
+      if (updatedAudit != null) {
+        await SyncService().enqueue(
+          entityType: 'audit',
+          entityId: widget.auditId,
+          mutationType: MutationType.update,
+          data: updatedAudit,
+        );
+
+        // Enqueue answers batch sync for this audit
+        await SyncService().enqueue(
+          entityType: 'answer',
+          entityId: widget.auditId,
+          mutationType: MutationType.update,
+          data: {'audit_id': widget.auditId},
+        );
+      }
 
       if (mounted) {
         // Retourner simplement à la page précédente
