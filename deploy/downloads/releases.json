@@ -1,0 +1,14 @@
+{
+  "latest": null,
+  "releases": [],
+  "platforms": {
+    "android": {
+      "available": false,
+      "latestApk": null
+    },
+    "ios": {
+      "available": false,
+      "latestIpa": null
+    }
+  }
+}

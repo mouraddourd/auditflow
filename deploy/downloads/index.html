@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuditFlow - Téléchargements</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .version {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .download-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        .download-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+        .download-card.android { border-left: 4px solid #3DDC84; }
+        .download-card.ios { border-left: 4px solid #007AFF; }
+        .platform-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+        .platform-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .file-info {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+        .download-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.2s ease;
+        }
+        .download-btn:hover {
+            transform: scale(1.05);
+        }
+        .unavailable {
+            color: #999;
+            font-style: italic;
+        }
+        .history-section {
+            margin-top: 30px;
+            border-top: 1px solid #e9ecef;
+            padding-top: 20px;
+        }
+        .history-title {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .history-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .release-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .release-info {
+            flex: 1;
+        }
+        .release-version {
+            font-weight: 600;
+            color: #333;
+        }
+        .release-date {
+            font-size: 12px;
+            color: #999;
+        }
+        .release-download {
+            font-size: 12px;
+            color: #667eea;
+            text-decoration: none;
+        }
+        .release-download:hover {
+            text-decoration: underline;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .badge.latest {
+            background: #28a745;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 AuditFlow</h1>
+        <p class="version" id="version">Chargement...</p>
+        
+        <div class="download-card android">
+            <div class="platform-icon">🤖</div>
+            <div class="platform-name">Android</div>
+            <div class="file-info" id="android-info">APK - Vérification...</div>
+            <a href="/android/auditflow.apk" class="download-btn" id="android-btn">Télécharger APK</a>
+        </div>
+        
+        <div class="download-card ios">
+            <div class="platform-icon">🍎</div>
+            <div class="platform-name">iOS</div>
+            <div class="file-info" id="ios-info">Bientôt disponible</div>
+            <span class="unavailable">Non disponible</span>
+        </div>
+        
+        <div class="history-section" id="history-section" style="display: none;">
+            <h2 class="history-title">📜 Historique des versions</h2>
+            <div class="history-list" id="history-list"></div>
+        </div>
+        
+        <div class="footer">
+            <p>Les données de votre application sont préservées lors des mises à jour.</p>
+        </div>
+    </div>
+    
+    <script>
+        fetch('/releases.json')
+            .then(r => r.json())
+            .then(data => {
+                const latest = data.latest;
+                if (latest) {
+                    document.getElementById('version').textContent = `Version ${latest.version} (${latest.buildNumber})`;
+                    document.getElementById('android-info').textContent = 
+                        `APK - ${latest.version} - ${(latest.androidSize / 1024 / 1024).toFixed(1)} Mo`;
+                    if (latest.iosAvailable) {
+                        document.getElementById('ios-info').textContent = 
+                            `IPA - ${latest.version} - ${(latest.iosSize / 1024 / 1024).toFixed(1)} Mo`;
+                    }
+                } else {
+                    document.getElementById('version').textContent = 'Aucune version disponible';
+                }
+                
+                // Afficher l'historique
+                if (data.releases && data.releases.length > 0) {
+                    const historySection = document.getElementById('history-section');
+                    const historyList = document.getElementById('history-list');
+                    historySection.style.display = 'block';
+                    
+                    data.releases.forEach((release, index) => {
+                        const item = document.createElement('div');
+                        item.className = 'release-item';
+                        const isLatest = index === 0;
+                        item.innerHTML = `
+                            <div class="release-info">
+                                <span class="release-version">
+                                    v${release.version} (${release.buildNumber})
+                                    ${isLatest ? '<span class="badge latest">Latest</span>' : ''}
+                                </span>
+                                <div class="release-date">${new Date(release.releaseDate).toLocaleDateString('fr-FR')}</div>
+                                ${release.releaseNotes ? `<div class="release-date">${release.releaseNotes}</div>` : ''}
+                            </div>
+                            <a href="/android/v${release.version}/auditflow-${release.version}.apk" class="release-download">APK</a>
+                        `;
+                        historyList.appendChild(item);
+                    });
+                }
+            })
+            .catch(() => {
+                document.getElementById('version').textContent = 'Version non disponible';
+            });
+    </script>
+</body>
+</html>

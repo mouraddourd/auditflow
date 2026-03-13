@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "buildNumber": 1,
+  "androidAvailable": false,
+  "androidSize": 0,
+  "androidUrl": "/android/auditflow.apk",
+  "iosAvailable": false,
+  "iosSize": 0,
+  "iosUrl": "/ios/auditflow.ipa",
+  "releaseDate": "2026-03-13T22:20:00.000Z",
+  "releaseNotes": "Version initiale"
+}

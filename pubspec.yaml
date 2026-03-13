@@ -71,6 +71,10 @@ dependencies:
   image_picker: ^1.1.2
   # Network connectivity
   connectivity_plus: ^6.0.3
+  # Auto-update system
+  open_file: ^3.5.10
+  permission_handler: ^11.3.1
+  package_info_plus: ^8.0.2
 
 dev_dependencies:
   flutter_test:
