@@ -41,7 +41,7 @@ jobs:
     env:
       DEPLOY_PATH: /home/auditflow/prod-backend
       COMPOSE_FILE: docker-compose.backend.yml
-      SSH_HOST: "[${{ secrets.VPS_HOST }}]"
+      SSH_HOST: "${{ secrets.VPS_HOST }}"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
