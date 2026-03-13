@@ -3,6 +3,10 @@ name: Deploy AuditFlow Backend
 on:
   push:
     branches: ["master"]
+    paths:
+      - "backend/**"
+      - "deploy/docker-compose.backend.yml"
+      - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
 
 jobs:
