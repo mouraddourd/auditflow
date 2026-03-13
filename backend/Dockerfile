@@ -7,6 +7,7 @@ COPY package.json package-lock.json ./
 RUN npm install
 
 # Copy Prisma schema and generate client
+COPY prisma.config.ts ./
 COPY prisma ./prisma
 RUN npx prisma generate
 
