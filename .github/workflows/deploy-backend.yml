@@ -83,7 +83,6 @@ jobs:
             --delete \
             --exclude='node_modules' \
             --exclude='dist' \
-            --exclude='.env' \
             --exclude='.env.*' \
             --exclude='coverage' \
             --exclude='.git' \
@@ -110,9 +109,9 @@ jobs:
           ssh -i ~/.ssh/id_rsa ${{ secrets.VPS_USER }}@${{ env.SSH_HOST }} <<'EOF'
             set -euo pipefail
             cd "${{ env.DEPLOY_PATH }}"
-            docker compose -f ${{ env.COMPOSE_FILE }} build
-            docker compose -f ${{ env.COMPOSE_FILE }} up -d --remove-orphans
-            docker compose -f ${{ env.COMPOSE_FILE }} exec -T backend sh -c "npx prisma migrate deploy"
+            docker compose --env-file .env -f ${{ env.COMPOSE_FILE }} build
+            docker compose --env-file .env -f ${{ env.COMPOSE_FILE }} up -d --remove-orphans
+            docker compose --env-file .env -f ${{ env.COMPOSE_FILE }} exec -T backend sh -c "npx prisma migrate deploy"
             echo "✅ Deployment completed"
           EOF
 
@@ -121,6 +120,6 @@ jobs:
           ssh -i ~/.ssh/id_rsa ${{ secrets.VPS_USER }}@${{ env.SSH_HOST }} <<'EOF'
             set -euo pipefail
             cd "${{ env.DEPLOY_PATH }}"
-            docker compose -f ${{ env.COMPOSE_FILE }} ps
-            docker compose -f ${{ env.COMPOSE_FILE }} logs --tail=30 backend
+            docker compose --env-file .env -f ${{ env.COMPOSE_FILE }} ps
+            docker compose --env-file .env -f ${{ env.COMPOSE_FILE }} logs --tail=30 backend
           EOF
