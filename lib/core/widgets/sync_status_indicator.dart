@@ -100,13 +100,14 @@ class _SyncStatusIndicatorState extends State<SyncStatusIndicator> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: status.backgroundColor.withOpacity(0.12),
+            color: status.backgroundColor.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-                color: status.backgroundColor.withOpacity(0.4), width: 1.2),
+                color: status.backgroundColor.withValues(alpha: 0.4),
+                width: 1.2),
             boxShadow: [
               BoxShadow(
-                color: status.backgroundColor.withOpacity(0.18),
+                color: status.backgroundColor.withValues(alpha: 0.18),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
               ),

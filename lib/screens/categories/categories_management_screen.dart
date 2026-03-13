@@ -147,7 +147,7 @@ class _CategoriesManagementScreenState
                   spacing: 8,
                   runSpacing: 8,
                   children: _presetColors.map((color) {
-                    final isSelected = selectedColor.value == color.value;
+                    final isSelected = selectedColor == color;
                     return GestureDetector(
                       onTap: () => setDialogState(() => selectedColor = color),
                       child: Container(
@@ -164,7 +164,7 @@ class _CategoriesManagementScreenState
                           boxShadow: isSelected
                               ? [
                                   BoxShadow(
-                                      color: color.withOpacity(0.5),
+                                      color: color.withValues(alpha: 0.5),
                                       blurRadius: 8,
                                       spreadRadius: 2)
                                 ]
@@ -200,7 +200,7 @@ class _CategoriesManagementScreenState
                           ? null
                           : descController.text.trim(),
                       color:
-                          '#${selectedColor.value.toRadixString(16).substring(2).toUpperCase()}',
+                          '#${(selectedColor.r * 255).round().toRadixString(16).padLeft(2, '0').toUpperCase()}${(selectedColor.g * 255).round().toRadixString(16).padLeft(2, '0').toUpperCase()}${(selectedColor.b * 255).round().toRadixString(16).padLeft(2, '0').toUpperCase()}',
                     );
 
                     // Enqueue sync
@@ -220,7 +220,7 @@ class _CategoriesManagementScreenState
                           ? null
                           : descController.text.trim(),
                       color:
-                          '#${selectedColor.value.toRadixString(16).substring(2).toUpperCase()}',
+                          '#${(selectedColor.r * 255).round().toRadixString(16).padLeft(2, '0').toUpperCase()}${(selectedColor.g * 255).round().toRadixString(16).padLeft(2, '0').toUpperCase()}${(selectedColor.b * 255).round().toRadixString(16).padLeft(2, '0').toUpperCase()}',
                     );
 
                     await SyncService().enqueue(
@@ -377,7 +377,7 @@ class _CategoriesManagementScreenState
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
+                color: color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(FontAwesomeIcons.tag, color: color),

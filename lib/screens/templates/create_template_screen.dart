@@ -20,7 +20,6 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
   List<Map<String, dynamic>> _categories = [];
 
   bool _isSaving = false;
-  bool _isLoadingCategories = true;
   String? _validationError;
 
   @override
@@ -37,16 +36,14 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
         final seeded = HiveService().getCategories();
         setState(() {
           _categories = seeded;
-          _isLoadingCategories = false;
         });
       } else {
         setState(() {
           _categories = categories;
-          _isLoadingCategories = false;
         });
       }
     } catch (e) {
-      setState(() => _isLoadingCategories = false);
+      // Categories loading failed, keep empty list
     }
   }
 
@@ -176,9 +173,9 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
+                  color: Colors.red.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -209,8 +206,8 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: theme.brightness == Brightness.dark
-                      ? Colors.white.withOpacity(0.06)
-                      : Colors.black.withOpacity(0.08),
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.black.withValues(alpha: 0.08),
                 ),
               ),
               child: Column(
@@ -295,8 +292,8 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: theme.brightness == Brightness.dark
-                        ? Colors.white.withOpacity(0.06)
-                        : Colors.black.withOpacity(0.08),
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : Colors.black.withValues(alpha: 0.08),
                   ),
                 ),
                 child: Center(
@@ -305,20 +302,20 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
                       Icon(
                         FontAwesomeIcons.circleQuestion,
                         size: 48,
-                        color: theme.colorScheme.onSurface.withOpacity(0.3),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         'Aucune question pour le moment',
                         style: theme.textTheme.bodyLarge?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Ajoutez des questions pour construire votre template',
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.4),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                         ),
                       ),
                     ],
@@ -358,13 +355,13 @@ class _CreateTemplateScreenState extends State<CreateTemplateScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    theme.colorScheme.primary.withOpacity(0.2),
-                    theme.colorScheme.secondary.withOpacity(0.2),
+                    theme.colorScheme.primary.withValues(alpha: 0.2),
+                    theme.colorScheme.secondary.withValues(alpha: 0.2),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: theme.colorScheme.primary.withOpacity(0.3),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
                 ),
               ),
               child: Column(
@@ -475,8 +472,8 @@ class _QuestionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: theme.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.08),
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.08),
         ),
       ),
       child: Row(
@@ -485,7 +482,7 @@ class _QuestionCard extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.2),
+              color: theme.colorScheme.primary.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: Center(

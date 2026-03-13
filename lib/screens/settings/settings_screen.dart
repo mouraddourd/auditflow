@@ -172,8 +172,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: theme.brightness == Brightness.dark
-                                    ? Colors.white.withOpacity(0.06)
-                                    : Colors.black.withOpacity(0.08),
+                                    ? Colors.white.withValues(alpha: 0.06)
+                                    : Colors.black.withValues(alpha: 0.08),
                               ),
                             ),
                             child: Column(
@@ -187,7 +187,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     item['subtitle'] as String,
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.onSurface
-                                          .withOpacity(0.6),
+                                          .withValues(alpha: 0.6),
                                     ),
                                   ),
                                   trailing:
@@ -660,7 +660,7 @@ class _SyncPageState extends State<_SyncPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.1),
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -690,7 +690,7 @@ class _SyncPageState extends State<_SyncPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(

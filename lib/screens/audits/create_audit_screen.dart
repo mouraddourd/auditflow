@@ -263,7 +263,7 @@ class _CreateAuditScreenState extends State<CreateAuditScreen>
                 ),
                 Expanded(
                     child: Divider(
-                        color: theme.colorScheme.primary.withOpacity(0.3))),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.3))),
                 _StepIndicator(
                   step: 2,
                   label: 'Détails',
@@ -286,7 +286,7 @@ class _CreateAuditScreenState extends State<CreateAuditScreen>
               Text(
                 'Sélectionnez un template pour démarrer votre audit',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
               const SizedBox(height: 24),
@@ -356,7 +356,7 @@ class _CreateAuditScreenState extends State<CreateAuditScreen>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -448,7 +448,7 @@ class _CreateAuditScreenState extends State<CreateAuditScreen>
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -525,7 +525,7 @@ class _StepIndicator extends StatelessWidget {
     final theme = Theme.of(context);
     final color = isComplete || isActive
         ? theme.colorScheme.primary
-        : theme.colorScheme.onSurface.withOpacity(0.3);
+        : theme.colorScheme.onSurface.withValues(alpha: 0.3);
 
     return Column(
       children: [
@@ -596,8 +596,8 @@ class _TemplateSelectionCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: theme.brightness == Brightness.dark
-                ? Colors.white.withOpacity(0.06)
-                : Colors.black.withOpacity(0.08),
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.08),
           ),
         ),
         child: Column(
@@ -611,7 +611,7 @@ class _TemplateSelectionCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.15),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -638,7 +638,7 @@ class _TemplateSelectionCard extends StatelessWidget {
             Text(
               '$questions questions',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.5),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
               ),
             ),
           ],

@@ -695,9 +695,9 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.15),
+                color: Colors.green.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.green.withOpacity(0.3)),
+                border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -747,7 +747,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
         children: [
           LinearProgressIndicator(
             value: _progress,
-            backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+            backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
           ),
           Expanded(
             child: ListView.builder(
@@ -775,8 +775,8 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: theme.brightness == Brightness.dark
-                          ? Colors.white.withOpacity(0.06)
-                          : Colors.black.withOpacity(0.08),
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : Colors.black.withValues(alpha: 0.08),
                     ),
                   ),
                   child: Column(
@@ -789,7 +789,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                                 horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
                               color:
-                                  theme.colorScheme.primary.withOpacity(0.15),
+                                  theme.colorScheme.primary.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -807,7 +807,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.orange.withOpacity(0.15),
+                                color: Colors.orange.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -843,8 +843,8 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
               border: Border(
                 top: BorderSide(
                   color: theme.brightness == Brightness.dark
-                      ? Colors.white.withOpacity(0.06)
-                      : Colors.black.withOpacity(0.08),
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.black.withValues(alpha: 0.08),
                 ),
               ),
             ),
@@ -853,7 +853,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                 Text(
                   '${(_progress * 100).round()}% complété (${_questions.where((q) => _answers.containsKey(q['id']) || (_existingAnswers?.containsKey(q['id']) ?? false)).length}/${_questions.length})',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const Spacer(),
@@ -864,10 +864,10 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 20, vertical: 12),
                           decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
+                            color: Colors.blue.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: Colors.blue.withOpacity(0.3),
+                              color: Colors.blue.withValues(alpha: 0.3),
                             ),
                           ),
                           child: Row(
@@ -1047,7 +1047,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                     color:
-                        Theme.of(context).colorScheme.outline.withOpacity(0.2)),
+                        Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
               ),
               child: Row(
                 children: [
@@ -1192,7 +1192,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
               color: Theme.of(context).cardTheme.color,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
               ),
             ),
             child: Row(
@@ -1225,7 +1225,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
           color: theme.cardTheme.color,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: theme.colorScheme.outline.withOpacity(0.2),
+            color: theme.colorScheme.outline.withValues(alpha: 0.2),
           ),
         ),
         child: Row(
@@ -1252,13 +1252,13 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: isYes
-                ? Colors.green.withOpacity(0.1)
-                : Colors.red.withOpacity(0.1),
+                ? Colors.green.withValues(alpha: 0.1)
+                : Colors.red.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isYes
-                  ? Colors.green.withOpacity(0.3)
-                  : Colors.red.withOpacity(0.3),
+                  ? Colors.green.withValues(alpha: 0.3)
+                  : Colors.red.withValues(alpha: 0.3),
             ),
           ),
           child: Row(
@@ -1292,10 +1292,10 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: color.withOpacity(0.3),
+              color: color.withValues(alpha: 0.3),
             ),
           ),
           child: Row(
@@ -1304,7 +1304,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
+                  color: color.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
@@ -1336,7 +1336,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: percentage,
-                        backgroundColor: color.withOpacity(0.1),
+                        backgroundColor: color.withValues(alpha: 0.1),
                         valueColor: AlwaysStoppedAnimation<Color>(color),
                         minHeight: 8,
                       ),
@@ -1356,7 +1356,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
             color: theme.cardTheme.color,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: theme.colorScheme.outline.withOpacity(0.2),
+              color: theme.colorScheme.outline.withValues(alpha: 0.2),
             ),
           ),
           child: Text(
@@ -1369,10 +1369,10 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withOpacity(0.1),
+            color: theme.colorScheme.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: theme.colorScheme.primary.withOpacity(0.3),
+              color: theme.colorScheme.primary.withValues(alpha: 0.3),
             ),
           ),
           child: Row(
@@ -1397,10 +1397,10 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.1),
+            color: Colors.blue.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: Colors.blue.withOpacity(0.3),
+              color: Colors.blue.withValues(alpha: 0.3),
             ),
           ),
           child: Row(
@@ -1433,7 +1433,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.15),
+                color: theme.colorScheme.primary.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -1455,7 +1455,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
             color: theme.cardTheme.color,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: theme.colorScheme.outline.withOpacity(0.2),
+              color: theme.colorScheme.outline.withValues(alpha: 0.2),
             ),
           ),
           child: Text(
@@ -1495,15 +1495,15 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            scoreColor.withOpacity(0.3),
-            scoreColor.withOpacity(0.1),
+            scoreColor.withValues(alpha: 0.3),
+            scoreColor.withValues(alpha: 0.1),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: scoreColor.withOpacity(0.5),
+          color: scoreColor.withValues(alpha: 0.5),
           width: 2,
         ),
       ),
@@ -1513,10 +1513,10 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: scoreColor.withOpacity(0.2),
+              color: scoreColor.withValues(alpha: 0.2),
               shape: BoxShape.circle,
               border: Border.all(
-                color: scoreColor.withOpacity(0.5),
+                color: scoreColor.withValues(alpha: 0.5),
                 width: 3,
               ),
             ),
@@ -1536,7 +1536,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                 Text(
                   'Score Global',
                   style: TextStyle(
-                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1555,7 +1555,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: scoreColor.withOpacity(0.15),
+                    color: scoreColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -1599,7 +1599,7 @@ class _ChoiceButton extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.2) : Colors.grey[800],
+          color: isSelected ? color.withValues(alpha: 0.2) : Colors.grey[800],
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? color : Colors.transparent,

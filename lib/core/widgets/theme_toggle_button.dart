@@ -91,12 +91,12 @@ class _ThemeToggleButtonState extends State<ThemeToggleButton>
               shape: BoxShape.circle,
               color: widget.backgroundColor ??
                   (isDark
-                      ? Colors.white.withOpacity(0.15)
-                      : Colors.black.withOpacity(0.08)),
+                      ? Colors.white.withValues(alpha: 0.15)
+                      : Colors.black.withValues(alpha: 0.08)),
               boxShadow: [
                 BoxShadow(
-                  color:
-                      (isDark ? Colors.white : Colors.black).withOpacity(0.15),
+                  color: (isDark ? Colors.white : Colors.black)
+                      .withValues(alpha: 0.15),
                   blurRadius: 10,
                   spreadRadius: 2,
                 ),

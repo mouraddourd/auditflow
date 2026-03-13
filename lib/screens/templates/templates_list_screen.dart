@@ -182,7 +182,7 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
                                   '${filteredTemplates.length} templates disponibles',
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: theme.colorScheme.onSurface
-                                        .withOpacity(0.6),
+                                        .withValues(alpha: 0.6),
                                   ),
                                 )
                                     .animate()
@@ -233,7 +233,7 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
                                   },
                                   backgroundColor: theme.cardTheme.color,
                                   selectedColor: theme.colorScheme.primary
-                                      .withOpacity(0.2),
+                                      .withValues(alpha: 0.2),
                                   checkmarkColor: theme.colorScheme.primary,
                                   labelStyle: TextStyle(
                                     color: _selectedCategory == null
@@ -263,7 +263,7 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
                                     },
                                     backgroundColor: theme.cardTheme.color,
                                     selectedColor: theme.colorScheme.primary
-                                        .withOpacity(0.2),
+                                        .withValues(alpha: 0.2),
                                     checkmarkColor: theme.colorScheme.primary,
                                     labelStyle: TextStyle(
                                       color: isSelected
@@ -425,8 +425,8 @@ class _TemplateCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: theme.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.08),
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.08),
         ),
       ),
       child: Column(
@@ -437,7 +437,7 @@ class _TemplateCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.15),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -453,7 +453,7 @@ class _TemplateCard extends StatelessWidget {
               Icon(
                 FontAwesomeIcons.ellipsisVertical,
                 size: 16,
-                color: theme.colorScheme.onSurface.withOpacity(0.4),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
               ),
             ],
           ),
@@ -470,7 +470,7 @@ class _TemplateCard extends StatelessWidget {
           Text(
             '$questionCount question${questionCount > 1 ? 's' : ''}',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.5),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
               fontSize: 11,
             ),
           ),

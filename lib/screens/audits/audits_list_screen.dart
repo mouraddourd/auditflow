@@ -120,7 +120,7 @@ class _AuditsListScreenState extends State<AuditsListScreen> {
                                     '${_audits.length} audits',
                                     style: theme.textTheme.bodyMedium?.copyWith(
                                       color: theme.colorScheme.onSurface
-                                          .withOpacity(0.6),
+                                          .withValues(alpha: 0.6),
                                     ),
                                   )
                                       .animate()
@@ -366,8 +366,8 @@ class _AuditCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: theme.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.08),
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.08),
         ),
       ),
       child: Column(
@@ -379,7 +379,7 @@ class _AuditCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.15),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -396,7 +396,7 @@ class _AuditCard extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.2),
+                  color: statusColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -433,7 +433,7 @@ class _AuditCard extends StatelessWidget {
             Text(
               audit['description'] as String,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -453,7 +453,7 @@ class _AuditCard extends StatelessWidget {
             Text(
               '$score% complété',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.5),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                 fontSize: 11,
               ),
             ),
@@ -482,7 +482,7 @@ class _AuditCard extends StatelessWidget {
               Text(
                 _formatDate(audit['updated_at'] as String?),
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
               const Spacer(),
@@ -609,7 +609,7 @@ class _StatusFilterChip extends StatelessWidget {
         selected: isSelected,
         onSelected: (_) => onSelected(),
         backgroundColor: theme.cardTheme.color,
-        selectedColor: effectiveColor.withOpacity(0.2),
+        selectedColor: effectiveColor.withValues(alpha: 0.2),
         checkmarkColor: effectiveColor,
         labelStyle: TextStyle(
           color: isSelected ? effectiveColor : theme.colorScheme.onSurface,

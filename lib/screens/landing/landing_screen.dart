@@ -64,9 +64,9 @@ class LandingScreen extends StatelessWidget {
                                 style: TextStyle(
                                   color: theme.brightness == Brightness.dark
                                       ? theme.colorScheme.onSurface
-                                          .withOpacity(0.7)
+                                          .withValues(alpha: 0.7)
                                       : theme.colorScheme.onSurface
-                                          .withOpacity(0.85),
+                                          .withValues(alpha: 0.85),
                                 ),
                               ),
                             ),
@@ -77,9 +77,9 @@ class LandingScreen extends StatelessWidget {
                                 style: TextStyle(
                                   color: theme.brightness == Brightness.dark
                                       ? theme.colorScheme.onSurface
-                                          .withOpacity(0.7)
+                                          .withValues(alpha: 0.7)
                                       : theme.colorScheme.onSurface
-                                          .withOpacity(0.85),
+                                          .withValues(alpha: 0.85),
                                 ),
                               ),
                             ),
@@ -103,9 +103,9 @@ class LandingScreen extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withOpacity(0.2),
+                            color: theme.colorScheme.primary.withValues(alpha: 0.2),
                             border: Border.all(
-                              color: theme.colorScheme.primary.withOpacity(0.3),
+                              color: theme.colorScheme.primary.withValues(alpha: 0.3),
                             ),
                             borderRadius: BorderRadius.circular(50),
                           ),
@@ -126,7 +126,7 @@ class LandingScreen extends StatelessWidget {
                                 ? [Colors.white, Colors.white70]
                                 : [
                                     theme.colorScheme.onSurface,
-                                    theme.colorScheme.onSurface.withOpacity(0.7)
+                                    theme.colorScheme.onSurface.withValues(alpha: 0.7)
                                   ],
                           ).createShader(bounds),
                           child: Text(
@@ -148,8 +148,8 @@ class LandingScreen extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 18,
                             color: theme.brightness == Brightness.dark
-                                ? theme.colorScheme.onSurface.withOpacity(0.7)
-                                : theme.colorScheme.onSurface.withOpacity(0.85),
+                                ? theme.colorScheme.onSurface.withValues(alpha: 0.7)
+                                : theme.colorScheme.onSurface.withValues(alpha: 0.85),
                             height: 1.6,
                           ),
                           textAlign: TextAlign.center,
@@ -192,7 +192,7 @@ class LandingScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(48),
                     color: theme.brightness == Brightness.dark
-                        ? Colors.black.withOpacity(0.3)
+                        ? Colors.black.withValues(alpha: 0.3)
                         : Colors.grey[100],
                     child: Column(
                       children: [
@@ -207,8 +207,8 @@ class LandingScreen extends StatelessWidget {
                           'Une suite complète d\'outils pour gérer vos audits efficacement',
                           style: TextStyle(
                             color: theme.brightness == Brightness.dark
-                                ? theme.colorScheme.onSurface.withOpacity(0.7)
-                                : theme.colorScheme.onSurface.withOpacity(0.85),
+                                ? theme.colorScheme.onSurface.withValues(alpha: 0.7)
+                                : theme.colorScheme.onSurface.withValues(alpha: 0.85),
                           ),
                         ),
                         const SizedBox(height: 48),
@@ -303,9 +303,9 @@ class LandingScreen extends StatelessWidget {
                             'Rejoignez des milliers d\'entreprises qui utilisent AuditFlow',
                             style: TextStyle(
                               color: theme.brightness == Brightness.dark
-                                  ? theme.colorScheme.onSurface.withOpacity(0.7)
+                                  ? theme.colorScheme.onSurface.withValues(alpha: 0.7)
                                   : theme.colorScheme.onSurface
-                                      .withOpacity(0.85),
+                                      .withValues(alpha: 0.85),
                               fontSize: 16,
                             ),
                           ),
@@ -332,7 +332,7 @@ class LandingScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(48),
                     color: theme.brightness == Brightness.dark
-                        ? Colors.black.withOpacity(0.5)
+                        ? Colors.black.withValues(alpha: 0.5)
                         : Colors.grey[200],
                     child: Column(
                       children: [
@@ -346,9 +346,9 @@ class LandingScreen extends StatelessWidget {
                                 style: TextStyle(
                                     color: theme.brightness == Brightness.dark
                                         ? theme.colorScheme.onSurface
-                                            .withOpacity(0.7)
+                                            .withValues(alpha: 0.7)
                                         : theme.colorScheme.onSurface
-                                            .withOpacity(0.85)),
+                                            .withValues(alpha: 0.85)),
                               ),
                             ),
                             TextButton(
@@ -358,9 +358,9 @@ class LandingScreen extends StatelessWidget {
                                 style: TextStyle(
                                     color: theme.brightness == Brightness.dark
                                         ? theme.colorScheme.onSurface
-                                            .withOpacity(0.7)
+                                            .withValues(alpha: 0.7)
                                         : theme.colorScheme.onSurface
-                                            .withOpacity(0.85)),
+                                            .withValues(alpha: 0.85)),
                               ),
                             ),
                             TextButton(
@@ -370,9 +370,9 @@ class LandingScreen extends StatelessWidget {
                                 style: TextStyle(
                                     color: theme.brightness == Brightness.dark
                                         ? theme.colorScheme.onSurface
-                                            .withOpacity(0.7)
+                                            .withValues(alpha: 0.7)
                                         : theme.colorScheme.onSurface
-                                            .withOpacity(0.85)),
+                                            .withValues(alpha: 0.85)),
                               ),
                             ),
                             TextButton(
@@ -382,9 +382,9 @@ class LandingScreen extends StatelessWidget {
                                 style: TextStyle(
                                     color: theme.brightness == Brightness.dark
                                         ? theme.colorScheme.onSurface
-                                            .withOpacity(0.7)
+                                            .withValues(alpha: 0.7)
                                         : theme.colorScheme.onSurface
-                                            .withOpacity(0.85)),
+                                            .withValues(alpha: 0.85)),
                               ),
                             ),
                           ],
@@ -394,9 +394,9 @@ class LandingScreen extends StatelessWidget {
                           '© 2025 AuditFlow. Tous droits réservés.',
                           style: TextStyle(
                               color: theme.brightness == Brightness.dark
-                                  ? theme.colorScheme.onSurface.withOpacity(0.5)
+                                  ? theme.colorScheme.onSurface.withValues(alpha: 0.5)
                                   : theme.colorScheme.onSurface
-                                      .withOpacity(0.7)),
+                                      .withValues(alpha: 0.7)),
                         ),
                       ],
                     ),
@@ -435,8 +435,8 @@ class _FeatureCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: theme.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.08),
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.08),
         ),
       ),
       child: Column(
@@ -445,7 +445,7 @@ class _FeatureCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.2),
+              color: theme.colorScheme.primary.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: theme.colorScheme.primary, size: 28),
@@ -462,8 +462,8 @@ class _FeatureCard extends StatelessWidget {
             description,
             style: TextStyle(
                 color: theme.brightness == Brightness.dark
-                    ? theme.colorScheme.onSurface.withOpacity(0.7)
-                    : theme.colorScheme.onSurface.withOpacity(0.85)),
+                    ? theme.colorScheme.onSurface.withValues(alpha: 0.7)
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.85)),
           ),
         ],
       ),

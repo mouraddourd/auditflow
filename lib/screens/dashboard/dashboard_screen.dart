@@ -149,7 +149,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 'Bienvenue sur AuditFlow',
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: theme.colorScheme.onSurface
-                                      .withOpacity(0.6),
+                                      .withValues(alpha: 0.6),
                                 ),
                               ),
                             ],
@@ -280,7 +280,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Text(
@@ -303,8 +303,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: theme.brightness == Brightness.dark
-                              ? Colors.white.withOpacity(0.06)
-                              : Colors.black.withOpacity(0.08),
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : Colors.black.withValues(alpha: 0.08),
                         ),
                       ),
                       child: Column(
@@ -334,7 +334,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                                     belowBarData: BarAreaData(
                                       show: true,
                                       color: theme.colorScheme.primary
-                                          .withOpacity(0.1),
+                                          .withValues(alpha: 0.1),
                                     ),
                                   ),
                                 ],
@@ -503,8 +503,8 @@ class _StatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: theme.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.08),
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.08),
         ),
       ),
       child: Column(
@@ -513,7 +513,7 @@ class _StatCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 24),
@@ -529,7 +529,7 @@ class _StatCard extends StatelessWidget {
           Text(
             title,
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
         ],
@@ -567,8 +567,8 @@ class _AuditCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: theme.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.06)
-              : Colors.black.withOpacity(0.08),
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.08),
         ),
       ),
       child: Row(
@@ -578,8 +578,8 @@ class _AuditCard extends StatelessWidget {
             height: 48,
             decoration: BoxDecoration(
               color: isCompleted
-                  ? Colors.green.withOpacity(0.15)
-                  : Colors.orange.withOpacity(0.15),
+                  ? Colors.green.withValues(alpha: 0.15)
+                  : Colors.orange.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
@@ -604,7 +604,7 @@ class _AuditCard extends StatelessWidget {
                 Text(
                   date,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.5),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
               ],
@@ -614,7 +614,7 @@ class _AuditCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: _getScoreColor(score!).withOpacity(0.15),
+                color: _getScoreColor(score!).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(

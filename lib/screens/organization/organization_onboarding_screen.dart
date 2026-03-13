@@ -127,13 +127,13 @@ class _OrganizationOnboardingScreenState
                     padding: const EdgeInsets.all(40),
                     decoration: BoxDecoration(
                       color: theme.brightness == Brightness.dark
-                          ? Colors.white.withOpacity(0.03)
-                          : Colors.black.withOpacity(0.03),
+                          ? Colors.white.withValues(alpha: 0.03)
+                          : Colors.black.withValues(alpha: 0.03),
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
                         color: theme.brightness == Brightness.dark
-                            ? Colors.white.withOpacity(0.1)
-                            : Colors.black.withOpacity(0.1),
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : Colors.black.withValues(alpha: 0.1),
                       ),
                     ),
                     child: Column(
@@ -166,7 +166,7 @@ class _OrganizationOnboardingScreenState
                             fontSize: 14,
                             color: theme.brightness == Brightness.dark
                                 ? Colors.grey[400]
-                                : theme.colorScheme.onSurface.withOpacity(0.6),
+                                : theme.colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                           textAlign: TextAlign.center,
                         ).animate().fadeIn(delay: 200.ms, duration: 600.ms),
@@ -177,7 +177,7 @@ class _OrganizationOnboardingScreenState
                             padding: const EdgeInsets.all(12),
                             margin: const EdgeInsets.only(bottom: 16),
                             decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
+                              color: Colors.red.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
@@ -199,10 +199,10 @@ class _OrganizationOnboardingScreenState
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withOpacity(0.05),
+                            color: theme.colorScheme.primary.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: theme.colorScheme.primary.withOpacity(0.2),
+                              color: theme.colorScheme.primary.withValues(alpha: 0.2),
                             ),
                           ),
                           child: Column(
@@ -246,8 +246,8 @@ class _OrganizationOnboardingScreenState
                                       size: 18),
                                   filled: true,
                                   fillColor: theme.brightness == Brightness.dark
-                                      ? Colors.white.withOpacity(0.05)
-                                      : Colors.black.withOpacity(0.05),
+                                      ? Colors.white.withValues(alpha: 0.05)
+                                      : Colors.black.withValues(alpha: 0.05),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: BorderSide.none,
@@ -326,11 +326,11 @@ class _OrganizationOnboardingScreenState
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
                             color:
-                                theme.colorScheme.secondary.withOpacity(0.05),
+                                theme.colorScheme.secondary.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
                               color:
-                                  theme.colorScheme.secondary.withOpacity(0.2),
+                                  theme.colorScheme.secondary.withValues(alpha: 0.2),
                             ),
                           ),
                           child: Column(
@@ -373,8 +373,8 @@ class _OrganizationOnboardingScreenState
                                       size: 18),
                                   filled: true,
                                   fillColor: theme.brightness == Brightness.dark
-                                      ? Colors.white.withOpacity(0.05)
-                                      : Colors.black.withOpacity(0.05),
+                                      ? Colors.white.withValues(alpha: 0.05)
+                                      : Colors.black.withValues(alpha: 0.05),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: BorderSide.none,

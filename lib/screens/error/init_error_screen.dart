@@ -46,9 +46,10 @@ class InitErrorScreen extends StatelessWidget {
                 children: [
                   // Error icon
                   Container(
-                    padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
+                    padding:
+                        EdgeInsets.all(ResponsiveConfig.getPadding(context)),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
+                      color: Colors.red.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -87,8 +88,8 @@ class InitErrorScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: theme.brightness == Brightness.dark
-                          ? Colors.white.withOpacity(0.05)
-                          : Colors.black.withOpacity(0.05),
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : Colors.black.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
@@ -154,5 +155,3 @@ class InitErrorScreen extends StatelessWidget {
     );
   }
 }
-
-

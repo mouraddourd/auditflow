@@ -151,7 +151,7 @@ class _TemplatesManagementScreenState extends State<TemplatesManagementScreen> {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.1),
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(FontAwesomeIcons.fileLines, color: theme.colorScheme.primary),
@@ -478,7 +478,7 @@ class _TemplateEditorScreenState extends State<TemplateEditorScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.1),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text('Q${index + 1}', style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w600)),
