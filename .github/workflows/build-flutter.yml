@@ -7,6 +7,9 @@ on:
       - "lib/**"
       - "pubspec.yaml"
       - "android/**"
+      - "deploy/downloads/**"
+      - "deploy/docker-compose.downloads.yml"
+      - ".github/workflows/build-flutter.yml"
   workflow_dispatch:
     inputs:
       build_number:

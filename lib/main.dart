@@ -3,11 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'core/widgets/theme_toggle_button.dart';
 import 'core/providers/organization_provider.dart';
 import 'services/auth_service.dart';
+import 'services/update_service.dart';
 import 'services/sync_service.dart';
 import 'hive/service.dart';
 import 'screens/auth/login_screen.dart';
@@ -18,6 +21,7 @@ import 'screens/templates/templates_list_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/error/init_error_screen.dart';
 import 'core/splash/splash_screen.dart';
+import 'widgets/update_dialog.dart';
 
 /// Global RouteObserver for tracking route changes
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
@@ -160,6 +164,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
   bool _isCheckingAuth = true;
   String? _userId;
   String? _token;
+  bool _hasCheckedForUpdate = false;
 
   final _authService = AuthService();
   final _hiveService = HiveService();
@@ -195,9 +200,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
         }
       }
       if (mounted) setState(() => _isCheckingAuth = false);
+      _scheduleUpdateCheck();
     }).catchError((e) {
       debugPrint('Auth check failed: $e');
       if (mounted) setState(() => _isCheckingAuth = false);
+      _scheduleUpdateCheck();
     });
 
     // Timeout after 3 seconds - force show login
@@ -205,7 +212,31 @@ class _AuthWrapperState extends State<AuthWrapper> {
     if (!completed && mounted) {
       completed = true;
       setState(() => _isCheckingAuth = false);
+      _scheduleUpdateCheck();
     }
+  }
+
+  void _scheduleUpdateCheck() {
+    if (_hasCheckedForUpdate || !mounted) {
+      return;
+    }
+
+    _hasCheckedForUpdate = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) {
+        return;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      final updateService = UpdateService(Dio(), prefs);
+
+      if (!mounted) {
+        return;
+      }
+
+      await checkAndShowUpdateDialog(context, updateService);
+    });
   }
 
   void _login(String userId, String token,
