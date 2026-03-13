@@ -21,6 +21,7 @@ jobs:
     environment: production
     env:
       FLUTTER_VERSION: "3.27.4"
+      API_BASE_URL: https://${{ vars.PROD_API_DOMAIN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,7 +55,7 @@ jobs:
 
       - name: Build APK
         run: |
-          flutter build apk --release --build-name=${{ steps.version.outputs.version }} --build-number=${{ steps.version.outputs.build_number }}
+          flutter build apk --release --build-name=${{ steps.version.outputs.version }} --build-number=${{ steps.version.outputs.build_number }} --dart-define=API_BASE_URL=${{ env.API_BASE_URL }}
 
       - name: Rename APK
         run: |
