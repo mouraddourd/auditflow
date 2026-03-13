@@ -2,20 +2,21 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy all files
-COPY . .
+# Install dependencies first for better layer caching
+COPY package.json package-lock.json ./
+RUN npm ci
 
-# Install dependencies
-RUN npm install
-
-# Generate Prisma client
+# Copy Prisma schema and generate client
+COPY prisma ./prisma
 RUN npx prisma generate
 
-# Build TypeScript
+# Copy source files and build
+COPY tsconfig.json ./
+COPY src ./src
 RUN npm run build
 
 # Expose port
 EXPOSE 3000
 
-# Start the application
-CMD ["npm", "start"]
+# Start the application in production after applying migrations
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
