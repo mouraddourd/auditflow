@@ -179,21 +179,21 @@ jobs:
           ssh -i ~/.ssh/id_rsa ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} <<'EOF'
             set -euo pipefail
             cd "${{ env.DEPLOY_PATH }}"
+
+            cat > .env <<EOT
+            DOWNLOADS_DOMAIN=${{ env.DOWNLOADS_DOMAIN }}
+            EOT
             
             # Stop existing container if running
             docker compose -f docker-compose.downloads.yml down --remove-orphans || true
             
-            # Create volume mapping to our downloads folder
-            # We need to update the compose to use bind mount instead of volume
-            sed -i 's|downloads_data:/usr/share/nginx/html:ro|/var/downloads:/usr/share/nginx/html:ro|g' docker-compose.downloads.yml
-            
             # Start the service
-            docker compose -f docker-compose.downloads.yml up -d
+            docker compose --env-file .env -f docker-compose.downloads.yml up -d
             sleep 5
-            docker compose -f docker-compose.downloads.yml ps
+            docker compose --env-file .env -f docker-compose.downloads.yml ps
             echo "✅ Downloads service deployed"
           EOF
 
       - name: Verify deployment
         run: |
-          curl -I https://${{ env.DOWNLOADS_DOMAIN }}/version.json || echo "Warning: Domain may need DNS update"
+          curl -I https://${{ env.DOWNLOADS_DOMAIN }}/releases.json || echo "Warning: Domain may need DNS update"
