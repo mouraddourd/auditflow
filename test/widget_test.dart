@@ -12,6 +12,8 @@ void main() {
   testWidgets('AuditFlow app loads', (WidgetTester tester) async {
     await tester.pumpWidget(const AuditFlowApp());
     await tester.pumpAndSettle();
-    expect(find.text('Dashboard'), findsOneWidget);
+
+    // Initial screen is login/onboarding; assert login title exists
+    expect(find.text('Connexion'), findsOneWidget);
   });
 }

@@ -238,6 +238,7 @@ class SyncService {
             entry.entityId,
             SyncStatus.failed,
           );
+          await _removeFromQueue(entry.id);
           continue;
         }
 
@@ -283,6 +284,7 @@ class SyncService {
               entry.entityId,
               SyncStatus.failed,
             );
+            await _removeFromQueue(entry.id);
           }
         }
       }
@@ -467,10 +469,15 @@ class SyncService {
       'organizationId': data['organization_id'],
     };
 
-    if (data['description'] != null)
+    if (data['description'] != null) {
       payload['description'] = data['description'];
-    if (data['status'] != null) payload['status'] = data['status'];
-    if (data['score'] != null) payload['score'] = data['score'];
+    }
+    if (data['status'] != null) {
+      payload['status'] = data['status'];
+    }
+    if (data['score'] != null) {
+      payload['score'] = data['score'];
+    }
 
     // startedAt/completedAt ne sont pas dans le schéma de création, seulement dans update
 
@@ -480,14 +487,24 @@ class SyncService {
   Map<String, dynamic> _prepareAuditUpdateData(Map<String, dynamic> data) {
     final payload = <String, dynamic>{};
 
-    if (data['title'] != null) payload['title'] = data['title'];
-    if (data['description'] != null)
+    if (data['title'] != null) {
+      payload['title'] = data['title'];
+    }
+    if (data['description'] != null) {
       payload['description'] = data['description'];
-    if (data['status'] != null) payload['status'] = data['status'];
-    if (data['score'] != null) payload['score'] = data['score'];
-    if (data['started_at'] != null) payload['startedAt'] = data['started_at'];
-    if (data['completed_at'] != null)
+    }
+    if (data['status'] != null) {
+      payload['status'] = data['status'];
+    }
+    if (data['score'] != null) {
+      payload['score'] = data['score'];
+    }
+    if (data['started_at'] != null) {
+      payload['startedAt'] = data['started_at'];
+    }
+    if (data['completed_at'] != null) {
       payload['completedAt'] = data['completed_at'];
+    }
 
     return payload;
   }
@@ -578,10 +595,15 @@ class SyncService {
 
   Map<String, dynamic> _prepareCategoryUpdateData(Map<String, dynamic> data) {
     final payload = <String, dynamic>{};
-    if (data['name'] != null) payload['name'] = data['name'];
-    if (data['description'] != null)
+    if (data['name'] != null) {
+      payload['name'] = data['name'];
+    }
+    if (data['description'] != null) {
       payload['description'] = data['description'];
-    if (data['color'] != null) payload['color'] = data['color'];
+    }
+    if (data['color'] != null) {
+      payload['color'] = data['color'];
+    }
     return payload;
   }
 
@@ -595,7 +617,7 @@ class SyncService {
       final audit = _hive.getAuditById(auditId);
       if (audit != null) {
         final templateId =
-            audit['template_id'] ?? audit['original_template_id'];
+            audit['original_template_id'] ?? audit['template_id'];
         if (templateId == null) {
           debugPrint(
               'SyncService: No template_id found for audit $auditId, skipping answers');
@@ -622,6 +644,8 @@ class SyncService {
 
         final rawAnswers = (audit['answers'] as List);
 
+        final questionsBox = Hive.box(HiveService.questionsBox);
+
         // Map questionId -> server question id (template questions must be synced)
         // On suppose que question_id local == id question (UUID) déjà poussé avec le template.
         // Si une question n’existe pas côté serveur, on ignore sa réponse pour éviter le FK error.
@@ -635,7 +659,12 @@ class SyncService {
             continue;
           }
 
-          final qidStr = localQid.toString();
+          // Map to original question id if available (for copied templates)
+          final questionEntry = questionsBox.get(localQid);
+          final mappedQid =
+              questionEntry?['original_question_id'] ?? localQid.toString();
+          final qidStr = mappedQid.toString();
+
           if (!serverQIds.contains(qidStr)) {
             skipped++;
             continue;
@@ -643,8 +672,12 @@ class SyncService {
 
           final score = a['score'];
           int? scoreInt;
-          if (score is int) scoreInt = score;
-          if (score is num && scoreInt == null) scoreInt = score.toInt();
+          if (score is int) {
+            scoreInt = score;
+          }
+          if (score is num && scoreInt == null) {
+            scoreInt = score.toInt();
+          }
 
           answers.add({
             'id': a['id'],
@@ -738,6 +771,7 @@ class SyncService {
           'order': q['order'],
           'required': q['required'] == true ? 1 : 0,
           'options': q['options'],
+          'original_question_id': q['id'],
           'sync_status': 'synced',
           'created_at': q['createdAt'],
         });

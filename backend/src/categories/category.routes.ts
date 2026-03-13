@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import { requireAuth } from '../auth/auth.middleware';
+import { assertCategoryAccess, assertOrgMember } from '../shared/authz';
 import {
   createCategory,
   getCategories,
@@ -27,57 +29,50 @@ const updateCategorySchema = z.object({
 /**
  * POST /categories - Create a category
  */
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = String(req.headers['x-user-id'] || '');
-
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
-
     const body = createCategorySchema.parse(req.body);
+
+    await assertOrgMember(req.userId!, body.organizationId);
 
     const category = await createCategory(body);
 
     res.status(201).json({ success: true, data: category });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(400).json({ success: false, error: message });
+    const status = message.toLowerCase().includes('forbidden') ? 403 : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });
 
 /**
  * GET /categories - List categories
  */
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = String(req.headers['x-user-id'] || '');
     const organizationId = String(req.query.organizationId || '');
-
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    if (!organizationId) {
+      return res.status(400).json({ success: false, error: 'organizationId is required' });
     }
+
+    await assertOrgMember(req.userId!, organizationId);
 
     const categories = await getCategories(organizationId);
 
     res.json({ success: true, data: categories });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(400).json({ success: false, error: message });
+    const status = message.toLowerCase().includes('forbidden') ? 403 : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });
 
 /**
  * GET /categories/:id - Get category by ID
  */
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = String(req.headers['x-user-id'] || '');
-    const { id } = req.params;
-
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
+    const { id } = req.params as { id: string };
 
     const category = await getCategoryById(id as string);
 
@@ -85,24 +80,24 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Category not found' });
     }
 
+    await assertOrgMember(req.userId!, category.organizationId);
+
     res.json({ success: true, data: category });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(400).json({ success: false, error: message });
+    const status = message.toLowerCase().includes('forbidden') ? 403 : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });
 
 /**
  * PUT /categories/:id - Update category
  */
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = String(req.headers['x-user-id'] || '');
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
 
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
+    await assertCategoryAccess(req.userId!, id);
 
     const body = updateCategorySchema.parse(req.body);
 
@@ -111,28 +106,27 @@ router.put('/:id', async (req: Request, res: Response) => {
     res.json({ success: true, data: category });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(400).json({ success: false, error: message });
+    const status = message.toLowerCase().includes('forbidden') ? 403 : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });
 
 /**
  * DELETE /categories/:id - Delete category
  */
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = String(req.headers['x-user-id'] || '');
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
 
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
+    await assertCategoryAccess(req.userId!, id);
 
     await deleteCategory(id as string);
 
     res.json({ success: true, message: 'Category deleted' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(400).json({ success: false, error: message });
+    const status = message.toLowerCase().includes('forbidden') ? 403 : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });
 

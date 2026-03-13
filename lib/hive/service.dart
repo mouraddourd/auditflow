@@ -152,6 +152,7 @@ class HiveService {
         'required': question['required'] == true ? 1 : 0,
         'options': question['options'], // Pour les questions de type multiple
         'created_at': now,
+        'original_question_id': questionId,
         'sync_status': 'pending',
       });
     }
@@ -163,7 +164,9 @@ class HiveService {
     final box = Hive.box(templatesBox);
     return box.values
         .where((t) =>
-            (t['organization_id'] == _organizationId || t['is_public'] == 1) &&
+            (t['organization_id'] == _organizationId ||
+                t['is_public'] == 1 ||
+                t['is_public'] == true) &&
             t['is_audit_copy'] != true) // Exclure les copies d'audit
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
@@ -223,6 +226,7 @@ class HiveService {
         'required': question['required'] == true ? 1 : 0,
         'options': question['options'], // Pour les questions de type multiple
         'created_at': now,
+        'original_question_id': questionId,
         'sync_status': 'pending',
       };
 
@@ -309,6 +313,8 @@ class HiveService {
         questionCopy['id'] = newQuestionId;
         questionCopy['template_id'] = auditTemplateId;
         questionCopy['created_at'] = now;
+        questionCopy['original_question_id'] =
+            q['original_question_id'] ?? q['id'];
         questionCopy['sync_status'] = 'pending';
         await questionsBoxInstance.put(newQuestionId, questionCopy);
       }

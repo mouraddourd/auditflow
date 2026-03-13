@@ -134,6 +134,25 @@ export async function updateAudit(auditId: string, data: UpdateAuditData) {
  * Save answers for an audit (batch upsert)
  */
 export async function saveAnswers(auditId: string, answers: CreateAnswerData[]) {
+  // Ensure audit exists and belongs to expected org
+  const audit = await prisma.audit.findUnique({
+    where: { id: auditId },
+    select: { id: true, organizationId: true, templateId: true },
+  });
+  if (!audit) throw new Error('Audit not found');
+
+  // Ensure questions belong to the audit template
+  const templateQuestions = await prisma.question.findMany({
+    where: { templateId: audit.templateId },
+    select: { id: true },
+  });
+  const validQuestionIds = new Set(templateQuestions.map((q) => q.id));
+
+  const invalid = answers.find((a) => !validQuestionIds.has(a.questionId));
+  if (invalid) {
+    throw new Error('Invalid questionId for this audit');
+  }
+
   // Upsert each answer
   const operations = answers.map((answer) =>
     prisma.answer.upsert({

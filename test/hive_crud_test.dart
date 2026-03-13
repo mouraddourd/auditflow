@@ -1,15 +1,41 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:auditflow/hive/service.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  final binaryMessenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  const pathProvider = MethodChannel('plugins.flutter.io/path_provider');
+  const sharedPrefs = MethodChannel('plugins.flutter.io/shared_preferences');
+
   setUpAll(() async {
+    binaryMessenger.setMockMethodCallHandler(pathProvider,
+        (MethodCall methodCall) async {
+      if (methodCall.method == 'getApplicationDocumentsDirectory') {
+        return '/tmp';
+      }
+      return null;
+    });
+
+    binaryMessenger.setMockMethodCallHandler(sharedPrefs,
+        (MethodCall methodCall) async {
+      if (methodCall.method == 'getAll') {
+        return <String, Object?>{};
+      }
+      return null;
+    });
+
     await Hive.initFlutter();
     await HiveService().initialize();
   });
 
   tearDownAll(() async {
     await Hive.deleteFromDisk();
+    binaryMessenger.setMockMethodCallHandler(pathProvider, null);
+    binaryMessenger.setMockMethodCallHandler(sharedPrefs, null);
   });
 
   group('HiveService CRUD Tests', () {

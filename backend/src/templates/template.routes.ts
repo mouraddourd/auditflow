@@ -1,5 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import { requireAuth } from '../auth/auth.middleware';
+import {
+  assertOrgMember,
+  assertTemplateAccess,
+} from '../shared/authz';
 import {
   createTemplate,
   getTemplates,
@@ -40,60 +45,54 @@ const updateTemplateSchema = z.object({
 /**
  * POST /templates - Create a template
  */
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = String(req.headers['x-user-id'] || '');
-
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
-
     const body = createTemplateSchema.parse(req.body);
+
+    // Ensure caller belongs to org
+    await assertOrgMember(req.userId!, body.organizationId);
 
     const template = await createTemplate({
       ...body,
-      userId,
+      userId: req.userId!,
     });
 
     res.status(201).json({ success: true, data: template });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(400).json({ success: false, error: message });
+    const status = message.toLowerCase().includes('forbidden') ? 403 : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });
 
 /**
  * GET /templates - List templates
  */
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = String(req.headers['x-user-id'] || '');
     const organizationId = String(req.query.organizationId || '');
-
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    if (!organizationId) {
+      return res.status(400).json({ success: false, error: 'organizationId is required' });
     }
 
-    const templates = await getTemplates(organizationId, userId);
+    await assertOrgMember(req.userId!, organizationId);
+
+    const templates = await getTemplates(organizationId, req.userId!);
 
     res.json({ success: true, data: templates });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(400).json({ success: false, error: message });
+    const status = message.toLowerCase().includes('forbidden') ? 403 : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });
 
 /**
  * GET /templates/:id - Get template by ID
  */
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = String(req.headers['x-user-id'] || '');
-    const { id } = req.params;
-
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
+    const { id } = req.params as { id: string };
 
     const template = await getTemplateById(id as string);
 
@@ -101,54 +100,53 @@ router.get('/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Template not found' });
     }
 
+    await assertOrgMember(req.userId!, template.organizationId);
+
     res.json({ success: true, data: template });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(400).json({ success: false, error: message });
+    const status = message.toLowerCase().includes('forbidden') ? 403 : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });
 
 /**
  * PUT /templates/:id - Update template
  */
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = String(req.headers['x-user-id'] || '');
-    const { id } = req.params;
-
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
+    const { id } = req.params as { id: string };
 
     const body = updateTemplateSchema.parse(req.body);
+
+    await assertTemplateAccess(req.userId!, id);
 
     const template = await updateTemplate(id as string, body);
 
     res.json({ success: true, data: template });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(400).json({ success: false, error: message });
+    const status = message.toLowerCase().includes('forbidden') ? 403 : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });
 
 /**
  * DELETE /templates/:id - Delete template
  */
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = String(req.headers['x-user-id'] || '');
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
 
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
+    await assertTemplateAccess(req.userId!, id);
 
     await deleteTemplate(id as string);
 
     res.json({ success: true, message: 'Template deleted' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(400).json({ success: false, error: message });
+    const status = message.toLowerCase().includes('forbidden') ? 403 : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });
 

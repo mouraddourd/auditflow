@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../services/sync_service.dart';
@@ -22,11 +23,20 @@ class _SyncStatusIndicatorState extends State<SyncStatusIndicator> {
   int _pendingCount = 0;
   int _failedCount = 0;
   bool _isSyncing = false;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     _updateCounts();
+    _pollTimer =
+        Timer.periodic(const Duration(seconds: 5), (_) => _updateCounts());
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   void _updateCounts() {
@@ -70,8 +80,20 @@ class _SyncStatusIndicatorState extends State<SyncStatusIndicator> {
       status = SyncDisplayStatus.synced;
     }
 
+    final tooltip = _failedCount > 0
+        ? 'Synchronisation en échec ($_failedCount)'
+        : _pendingCount > 0
+            ? 'Synchronisation en attente ($_pendingCount)'
+            : 'Synchronisation (appuyer pour forcer)';
+
+    final label = switch (status) {
+      SyncDisplayStatus.failed => 'Failed ($_failedCount)',
+      SyncDisplayStatus.pending => 'Pending ($_pendingCount)',
+      _ => status.label,
+    };
+
     return Tooltip(
-      message: 'Synchronisation (appuyer pour forcer)',
+      message: tooltip,
       child: InkWell(
         onTap: _handleTap,
         borderRadius: BorderRadius.circular(20),
@@ -110,7 +132,7 @@ class _SyncStatusIndicatorState extends State<SyncStatusIndicator> {
                 ),
               const SizedBox(width: 6),
               Text(
-                status.label,
+                label,
                 style: TextStyle(
                   color: status.textColor,
                   fontSize: 12,

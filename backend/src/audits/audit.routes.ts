@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import { requireAuth } from '../auth/auth.middleware';
+import { assertAuditAccess, assertOrgMember } from '../shared/authz';
 import {
   createAudit,
   getAudits,
@@ -45,86 +47,80 @@ const saveAnswersSchema = z.object({
 /**
  * POST /audits - Create an audit
  */
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = String(req.headers['x-user-id'] || '');
-
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
-
     const body = createAuditSchema.parse(req.body);
+
+    await assertOrgMember(req.userId!, body.organizationId);
 
     const audit = await createAudit({
       ...body,
-      userId,
+      userId: req.userId!,
     });
 
     res.status(201).json({ success: true, data: audit });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(400).json({ success: false, error: message });
+    const status = message.toLowerCase().includes('forbidden') ? 403 : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });
 
 /**
  * GET /audits - List audits
  */
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = String(req.headers['x-user-id'] || '');
     const organizationId = String(req.query.organizationId || '');
     const status = req.query.status as string | undefined;
 
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    if (!organizationId) {
+      return res.status(400).json({ success: false, error: 'organizationId is required' });
     }
 
-    const audits = await getAudits(organizationId, userId, status);
+    await assertOrgMember(req.userId!, organizationId);
+
+    const audits = await getAudits(organizationId, req.userId!, status);
 
     res.json({ success: true, data: audits });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(400).json({ success: false, error: message });
+    const statusCode = message.toLowerCase().includes('forbidden') ? 403 : 400;
+    res.status(statusCode).json({ success: false, error: message });
   }
 });
 
 /**
  * GET /audits/:id - Get audit by ID
  */
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = String(req.headers['x-user-id'] || '');
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
 
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
-
-    const audit = await getAuditById(id as string);
+    const audit = await getAuditById(id);
 
     if (!audit) {
       return res.status(404).json({ success: false, error: 'Audit not found' });
     }
 
+    await assertOrgMember(req.userId!, audit.organizationId);
+
     res.json({ success: true, data: audit });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(400).json({ success: false, error: message });
+    const status = message.toLowerCase().includes('forbidden') ? 403 : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });
 
 /**
  * PATCH /audits/:id - Update audit
  */
-router.patch('/:id', async (req: Request, res: Response) => {
+router.patch('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = String(req.headers['x-user-id'] || '');
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
 
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
+    await assertAuditAccess(req.userId!, id);
 
     const body = updateAuditSchema.parse(req.body);
 
@@ -132,56 +128,53 @@ router.patch('/:id', async (req: Request, res: Response) => {
     if (body.startedAt) updateData.startedAt = new Date(body.startedAt);
     if (body.completedAt) updateData.completedAt = new Date(body.completedAt);
 
-    const audit = await updateAudit(id as string, updateData);
+    const audit = await updateAudit(id, updateData);
 
     res.json({ success: true, data: audit });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(400).json({ success: false, error: message });
+    const status = message.toLowerCase().includes('forbidden') ? 403 : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });
 
 /**
  * PUT /audits/:id/answers - Save answers (batch)
  */
-router.put('/:id/answers', async (req: Request, res: Response) => {
+router.put('/:id/answers', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = String(req.headers['x-user-id'] || '');
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
 
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
+    await assertAuditAccess(req.userId!, id);
 
     const body = saveAnswersSchema.parse(req.body);
 
-    const audit = await saveAnswers(id as string, body.answers);
+    const audit = await saveAnswers(id, body.answers);
 
     res.json({ success: true, data: audit });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(400).json({ success: false, error: message });
+    const status = message.toLowerCase().includes('forbidden') ? 403 : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });
 
 /**
  * DELETE /audits/:id - Delete audit
  */
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId = String(req.headers['x-user-id'] || '');
-    const { id } = req.params;
+    const { id } = req.params as { id: string };
 
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
+    await assertAuditAccess(req.userId!, id);
 
-    await deleteAudit(id as string);
+    await deleteAudit(id);
 
     res.json({ success: true, message: 'Audit deleted' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(400).json({ success: false, error: message });
+    const status = message.toLowerCase().includes('forbidden') ? 403 : 400;
+    res.status(status).json({ success: false, error: message });
   }
 });
 
