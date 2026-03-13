@@ -41,6 +41,7 @@ jobs:
     env:
       DEPLOY_PATH: /home/auditflow/prod-backend
       COMPOSE_FILE: docker-compose.backend.yml
+      SSH_HOST: "[${{ secrets.VPS_HOST }}]"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -57,10 +58,11 @@ jobs:
           JWT_SECRET=${{ secrets.PROD_JWT_SECRET }}
           EOF
 
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY_BASE64 }}" | base64 -d > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
 
       - name: Add VPS to known hosts
         run: |
@@ -68,7 +70,7 @@ jobs:
 
       - name: Create deploy directory on VPS
         run: |
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} <<'EOF'
+          ssh -i ~/.ssh/id_rsa ${{ secrets.VPS_USER }}@${{ env.SSH_HOST }} <<'EOF'
             set -euo pipefail
             mkdir -p "${{ env.DEPLOY_PATH }}"
             echo "✅ Deploy directory ready"
@@ -77,6 +79,7 @@ jobs:
       - name: Sync backend files to VPS
         run: |
           rsync -avz \
+            -e "ssh -i ~/.ssh/id_rsa" \
             --delete \
             --exclude='node_modules' \
             --exclude='dist' \
@@ -89,11 +92,11 @@ jobs:
             backend \
             deploy/${{ env.COMPOSE_FILE }} \
             .env \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ env.DEPLOY_PATH }}/
+            ${{ secrets.VPS_USER }}@${{ env.SSH_HOST }}:${{ env.DEPLOY_PATH }}/
 
       - name: Clean Docker before deployment
         run: |
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} <<'EOF'
+          ssh -i ~/.ssh/id_rsa ${{ secrets.VPS_USER }}@${{ env.SSH_HOST }} <<'EOF'
             set -euo pipefail
             docker container prune -f || true
             docker image prune -a -f || true
@@ -104,7 +107,7 @@ jobs:
 
       - name: Deploy services on VPS
         run: |
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} <<'EOF'
+          ssh -i ~/.ssh/id_rsa ${{ secrets.VPS_USER }}@${{ env.SSH_HOST }} <<'EOF'
             set -euo pipefail
             cd "${{ env.DEPLOY_PATH }}"
             docker compose -f ${{ env.COMPOSE_FILE }} build
@@ -115,7 +118,7 @@ jobs:
 
       - name: Verify deployment
         run: |
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} <<'EOF'
+          ssh -i ~/.ssh/id_rsa ${{ secrets.VPS_USER }}@${{ env.SSH_HOST }} <<'EOF'
             set -euo pipefail
             cd "${{ env.DEPLOY_PATH }}"
             docker compose -f ${{ env.COMPOSE_FILE }} ps
