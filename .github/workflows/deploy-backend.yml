@@ -111,7 +111,7 @@ jobs:
             cd "${{ env.DEPLOY_PATH }}"
             docker compose --env-file .env -f ${{ env.COMPOSE_FILE }} build
             docker compose --env-file .env -f ${{ env.COMPOSE_FILE }} up -d --remove-orphans
-            docker compose --env-file .env -f ${{ env.COMPOSE_FILE }} exec -T backend sh -c "npx prisma migrate deploy"
+            sleep 10
             echo "✅ Deployment completed"
           EOF
 
