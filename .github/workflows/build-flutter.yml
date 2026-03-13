@@ -48,7 +48,7 @@ jobs:
         id: version
         run: |
           VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
-          BUILD_NUMBER=$(grep 'version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f2)
+          BUILD_NUMBER=${{ github.run_number }}
           if [ "${{ github.event.inputs.build_number }}" != "" ]; then
             BUILD_NUMBER="${{ github.event.inputs.build_number }}"
           fi
@@ -96,7 +96,10 @@ jobs:
         id: version
         run: |
           VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
-          BUILD_NUMBER=$(grep 'version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f2)
+          BUILD_NUMBER=${{ github.run_number }}
+          if [ "${{ github.event.inputs.build_number }}" != "" ]; then
+            BUILD_NUMBER="${{ github.event.inputs.build_number }}"
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
 
