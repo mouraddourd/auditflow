@@ -22,6 +22,10 @@ jobs:
     name: "🤖 Build Android APK"
     runs-on: ubuntu-latest
     environment: production
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      build_number: ${{ steps.version.outputs.build_number }}
+      artifact_name: ${{ steps.version.outputs.artifact_name }}
     env:
       FLUTTER_VERSION: "3.27.4"
       API_BASE_URL: https://${{ vars.PROD_API_DOMAIN }}
@@ -55,6 +59,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
           echo "artifact_name=auditflow-${VERSION}-${BUILD_NUMBER}.apk" >> $GITHUB_OUTPUT
+          echo "📦 Building version $VERSION (build $BUILD_NUMBER)"
 
       - name: Build APK
         run: |
@@ -95,13 +100,11 @@ jobs:
       - name: Extract version info
         id: version
         run: |
-          VERSION=$(grep 'version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
-          BUILD_NUMBER=${{ github.run_number }}
-          if [ "${{ github.event.inputs.build_number }}" != "" ]; then
-            BUILD_NUMBER="${{ github.event.inputs.build_number }}"
-          fi
+          VERSION="${{ needs.build-android.outputs.version }}"
+          BUILD_NUMBER="${{ needs.build-android.outputs.build_number }}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "📦 Publishing version $VERSION (build $BUILD_NUMBER)"
 
       - name: Setup SSH key
         run: |

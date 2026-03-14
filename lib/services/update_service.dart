@@ -36,19 +36,30 @@ class UpdateService {
       // Récupérer la dernière version
       final latestData = data['latest'] as Map<String, dynamic>?;
       if (latestData == null) {
+        debugPrint('UpdateService: No latest data in releases.json');
         return null;
       }
+
+      debugPrint('UpdateService: latestData from server: $latestData');
 
       final serverVersion = VersionInfo.fromJson(latestData);
       final currentVersion = await _getCurrentVersion();
 
+      debugPrint(
+          'UpdateService: Server buildNumber=${serverVersion.buildNumber}, Current buildNumber=${currentVersion.buildNumber}');
+      debugPrint(
+          'UpdateService: Server version=${serverVersion.version}, Current version=${currentVersion.version}');
+
       if (serverVersion.buildNumber > currentVersion.buildNumber) {
+        debugPrint('UpdateService: Update available!');
         return serverVersion;
       }
 
+      debugPrint('UpdateService: No update needed (server <= current)');
       return null;
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('Erreur lors de la vérification de mise à jour: $e');
+      debugPrint('Stack trace: $stackTrace');
       return null;
     }
   }
