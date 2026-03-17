@@ -11,11 +11,6 @@ const envSchema = z.object({
   // Optional with defaults
   PORT: z.string().optional().default('3000'),
   NODE_ENV: z.enum(['development', 'production', 'test']).optional().default('development'),
-  
-  // Optional - Firebase (notifications work without these)
-  FIREBASE_PROJECT_ID: z.string().optional(),
-  FIREBASE_PRIVATE_KEY: z.string().optional(),
-  FIREBASE_CLIENT_EMAIL: z.string().optional(),
 });
 
 function validateEnv() {
