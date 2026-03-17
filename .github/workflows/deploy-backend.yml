@@ -89,27 +89,20 @@ jobs:
 
       - name: Sync files to VPS
         run: |
+          # Copy docker-compose and .env
+          scp deploy/${{ env.COMPOSE_FILE }} \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ env.DEPLOY_PATH }}/docker-compose.backend.yml
+          scp .env \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ env.DEPLOY_PATH }}/.env
+          
+          # Sync backend folder (without trailing slash to preserve folder structure)
           rsync -avz \
             --exclude='.git' \
             --exclude='node_modules' \
             --exclude='dist' \
             --exclude='.env.*' \
             --exclude='coverage' \
-            --exclude='.windsurf' \
-            --exclude='.github' \
-            --exclude='frontend' \
-            --exclude='lib' \
-            --exclude='android' \
-            --exclude='ios' \
-            --exclude='web' \
-            --exclude='test' \
-            --exclude='tests' \
-            --exclude='audit-wireframes' \
-            --exclude='init-scripts' \
-            --exclude='scripts' \
-            backend/ \
-            deploy/${{ env.COMPOSE_FILE }} \
-            .env \
+            backend \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ env.DEPLOY_PATH }}/
 
       - name: Clean Docker before deployment
