@@ -197,6 +197,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
               _token = token;
             });
           }
+          // Pull latest data from server on app start if already authenticated
+          final syncService = SyncService();
+          try {
+            await syncService.pullAll();
+            debugPrint('AuthWrapper: Data pulled from server on app start');
+          } catch (e) {
+            debugPrint('AuthWrapper: Failed to pull data on app start: $e');
+          }
         }
       }
       if (mounted) setState(() => _isCheckingAuth = false);
@@ -253,6 +261,17 @@ class _AuthWrapperState extends State<AuthWrapper> {
       _userId = userId;
       _token = token;
     });
+
+    // Pull latest data from server after login
+    if (organization != null) {
+      final syncService = SyncService();
+      try {
+        await syncService.pullAll();
+        debugPrint('AuthWrapper: Data pulled from server after login');
+      } catch (e) {
+        debugPrint('AuthWrapper: Failed to pull data after login: $e');
+      }
+    }
   }
 
   void _logout() async {
