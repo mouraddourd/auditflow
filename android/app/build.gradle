@@ -38,7 +38,10 @@ android {
         release {
             keyAlias keystoreProperties['keyAlias'] ?: System.getenv('KEY_ALIAS') ?: 'auditflow'
             keyPassword keystoreProperties['keyPassword'] ?: System.getenv('KEY_PASSWORD')
-            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+            // storeFile from key.properties, or KEYSTORE_FILE env var, or default path
+            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) 
+                : (System.getenv('KEYSTORE_FILE') ? file(System.getenv('KEYSTORE_FILE')) 
+                : file("${System.getProperty('user.home')}/.android/auditflow-release.jks"))
             storePassword keystoreProperties['storePassword'] ?: System.getenv('STORE_PASSWORD')
         }
     }
