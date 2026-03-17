@@ -48,6 +48,42 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Setup signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.AUDITFLOW_KEYSTORE_BASE64 }}
+          KEY_ALIAS: auditflow
+          KEY_PASSWORD: ${{ secrets.AUDITFLOW_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.AUDITFLOW_STORE_PASSWORD }}
+        run: |
+          # Create keystore directory
+          mkdir -p ~/.android
+          
+          # If keystore secret exists, decode it
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > ~/.android/auditflow-release.jks
+            echo "KEYSTORE_FILE=$HOME/.android/auditflow-release.jks" >> $GITHUB_ENV
+          else
+            # Generate new keystore if not exists
+            cd ~/.android
+            keytool -genkey -v \
+              -keystore auditflow-release.jks \
+              -keyalg RSA -keysize 2048 \
+              -validity 10000 \
+              -alias auditflow \
+              -storepass "$STORE_PASSWORD" \
+              -keypass "$KEY_PASSWORD" \
+              -dname "CN=AuditFlow, OU=Development, O=AuditFlow, L=Paris, ST=France, C=FR"
+            echo "KEYSTORE_FILE=$HOME/.android/auditflow-release.jks" >> $GITHUB_ENV
+            
+            # Output base64 for user to save as secret
+            echo "NEW_KEYSTORE_BASE64=$(base64 -w0 auditflow-release.jks)" >> $GITHUB_OUTPUT
+            echo "⚠️ New keystore generated. Save the base64 output as AUDITFLOW_KEYSTORE_BASE64 secret."
+          fi
+          
+          echo "KEY_ALIAS=auditflow" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=$KEY_PASSWORD" >> $GITHUB_ENV
+          echo "STORE_PASSWORD=$STORE_PASSWORD" >> $GITHUB_ENV
+
       - name: Extract version info
         id: version
         run: |
