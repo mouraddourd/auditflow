@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Permission INTERNET obligatoire pour les requêtes réseau -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Permissions pour image_picker -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
