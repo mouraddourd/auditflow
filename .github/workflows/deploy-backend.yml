@@ -69,6 +69,21 @@ jobs:
           cat .env | grep -v "PASSWORD\|SECRET\|KEY" || true
           echo ""
           echo "✅ .env file exists and contains $(wc -l < .env) lines"
+      
+      - name: Transform PROD_* variables for docker-compose
+        run: |
+          # Create mappings for docker-compose (remove PROD_ prefix)
+          grep "^PROD_" .env | sed 's/^PROD_//' >> .env
+          
+          # Also add unprefixed versions of common variables
+          echo "POSTGRES_USER=$(grep PROD_POSTGRES_USER .env | cut -d'=' -f2-)" >> .env
+          echo "POSTGRES_PASSWORD=$(grep PROD_POSTGRES_PASSWORD .env | cut -d'=' -f2-)" >> .env
+          echo "POSTGRES_DB=$(grep PROD_POSTGRES_DB .env | cut -d'=' -f2-)" >> .env
+          echo "JWT_SECRET=$(grep PROD_JWT_SECRET .env | cut -d'=' -f2-)" >> .env
+          echo "API_DOMAIN=$(grep PROD_API_DOMAIN .env | cut -d'=' -f2-)" >> .env
+          echo "BACKEND_PORT=$(grep PROD_BACKEND_PORT .env | cut -d'=' -f2-)" >> .env
+          
+          echo "✅ Transformed variables for docker-compose"
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.7.0
