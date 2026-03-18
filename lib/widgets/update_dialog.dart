@@ -43,15 +43,32 @@ class _UpdateDialogState extends State<UpdateDialog> {
           Text(
             'Version ${widget.version.fullVersion}',
             style: const TextStyle(
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              'Build ${widget.version.buildNumber}',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           Text(
             'Taille: ${widget.version.androidSizeFormatted}',
             style: TextStyle(
-              color: Colors.grey[600],
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              fontSize: 14,
             ),
           ),
           if (widget.version.releaseNotes.isNotEmpty) ...[
@@ -59,12 +76,15 @@ class _UpdateDialogState extends State<UpdateDialog> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 widget.version.releaseNotes,
-                style: const TextStyle(fontSize: 14),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
           ],
@@ -74,7 +94,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
             decoration: BoxDecoration(
               color: Colors.green[50],
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.green[200]!),
+              border: Border.all(color: Colors.green[300]!),
             ),
             child: Row(
               children: [
@@ -84,8 +104,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
                   child: Text(
                     'Vos données seront préservées',
                     style: TextStyle(
-                      color: Colors.green[700],
+                      color: Colors.green[800],
                       fontSize: 13,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -112,10 +133,38 @@ class _UpdateDialogState extends State<UpdateDialog> {
               decoration: BoxDecoration(
                 color: Colors.red[50],
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red[200]!),
               ),
-              child: Text(
-                _error!,
-                style: TextStyle(color: Colors.red[700]),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.error_outline,
+                          color: Colors.red[700], size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _error!,
+                          style:
+                              TextStyle(color: Colors.red[700], fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _isDownloading ? null : _startDownload,
+                      icon: const Icon(Icons.refresh, size: 18),
+                      label: const Text('Réessayer'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red[700],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -123,10 +172,12 @@ class _UpdateDialogState extends State<UpdateDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _isDownloading ? null : () {
-            Navigator.of(context).pop();
-            widget.onDismiss?.call();
-          },
+          onPressed: _isDownloading
+              ? null
+              : () {
+                  Navigator.of(context).pop();
+                  widget.onDismiss?.call();
+                },
           child: const Text('Plus tard'),
         ),
         ElevatedButton.icon(
@@ -150,28 +201,41 @@ class _UpdateDialogState extends State<UpdateDialog> {
       _error = null;
     });
 
-    final filePath = await widget.updateService.downloadApk(
-      widget.version,
-      onProgress: (received, total) {
-        setState(() {
-          _downloadProgress = ((received / total) * 100).round();
-        });
-      },
-    );
+    try {
+      final filePath = await widget.updateService.downloadApk(
+        widget.version,
+        onProgress: (received, total) {
+          if (mounted) {
+            setState(() {
+              _downloadProgress = ((received / total) * 100).round();
+            });
+          }
+        },
+      );
 
-    if (filePath != null) {
-      final installed = await widget.updateService.installApk(filePath);
-      if (!installed) {
+      if (filePath != null) {
+        final installed = await widget.updateService.installApk(filePath);
+        if (!installed && mounted) {
+          setState(() {
+            _error =
+                'Erreur lors de l\'installation. Vérifiez que vous autorisez les installations d\'applications inconnues.';
+            _isDownloading = false;
+          });
+        }
+      } else if (mounted) {
         setState(() {
-          _error = 'Erreur lors de l\'installation. Veuillez réessayer.';
+          _error =
+              'Impossible de télécharger la mise à jour.\nVérifiez votre connexion internet.';
           _isDownloading = false;
         });
       }
-    } else {
-      setState(() {
-        _error = 'Erreur lors du téléchargement. Veuillez réessayer.';
-        _isDownloading = false;
-      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Erreur: ${e.toString()}';
+          _isDownloading = false;
+        });
+      }
     }
   }
 }
@@ -182,7 +246,7 @@ Future<void> checkAndShowUpdateDialog(
   UpdateService updateService,
 ) async {
   final version = await updateService.checkForUpdate();
-  
+
   if (version != null && context.mounted) {
     showDialog(
       context: context,

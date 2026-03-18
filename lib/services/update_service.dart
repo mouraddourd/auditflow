@@ -70,22 +70,33 @@ class UpdateService {
     required void Function(int received, int total) onProgress,
   }) async {
     try {
+      debugPrint(
+          'UpdateService: Starting APK download for version ${version.version} (build ${version.buildNumber})');
+      debugPrint('UpdateService: APK URL: $_apkBaseUrl${version.androidUrl}');
+
       // Vérifier les permissions de stockage
       if (!await _requestStoragePermission()) {
+        debugPrint('UpdateService: Storage permission denied');
         throw Exception('Permission de stockage refusée');
       }
+      debugPrint('UpdateService: Storage permission granted');
 
       // Créer le répertoire de téléchargement
       final appDir = await getApplicationDocumentsDirectory();
+      debugPrint('UpdateService: App directory: ${appDir.path}');
+
       final downloadsDir = Directory('${appDir.path}/updates');
       if (!await downloadsDir.exists()) {
         await downloadsDir.create(recursive: true);
+        debugPrint(
+            'UpdateService: Created downloads directory: ${downloadsDir.path}');
       }
 
       // Chemin du fichier APK
       final fileName =
           'auditflow-${version.version}-${version.buildNumber}.apk';
       final filePath = '${downloadsDir.path}/$fileName';
+      debugPrint('UpdateService: Target file path: $filePath');
 
       // Supprimer les anciens APK
       await for (final entity in downloadsDir.list()) {
@@ -93,24 +104,64 @@ class UpdateService {
             entity.path.endsWith('.apk') &&
             entity.path != filePath) {
           await entity.delete();
+          debugPrint('UpdateService: Deleted old APK: ${entity.path}');
         }
       }
 
       // Télécharger le nouvel APK
+      final downloadUrl = '$_apkBaseUrl${version.androidUrl}';
+      debugPrint('UpdateService: Downloading from: $downloadUrl');
+
       await _dio.download(
-        '$_apkBaseUrl${version.androidUrl}',
+        downloadUrl,
         filePath,
-        onReceiveProgress: onProgress,
+        onReceiveProgress: (received, total) {
+          if (total > 0) {
+            debugPrint(
+                'UpdateService: Download progress: $received / $total (${((received / total) * 100).toStringAsFixed(1)}%)');
+          }
+          onProgress(received, total);
+        },
       );
+
+      // Vérifier que le fichier a bien été téléchargé
+      final downloadedFile = File(filePath);
+      if (!await downloadedFile.exists()) {
+        debugPrint('UpdateService: Downloaded file not found at $filePath');
+        throw Exception('Le fichier téléchargé n\'a pas été trouvé');
+      }
+
+      final fileSize = await downloadedFile.length();
+      debugPrint(
+          'UpdateService: Download complete. File size: $fileSize bytes');
+
+      if (fileSize < 1000000) {
+        // Moins de 1 Mo = probablement une erreur
+        debugPrint(
+            'UpdateService: WARNING - File size seems too small: $fileSize bytes');
+        // Lire le contenu pour voir si c'est une erreur HTML
+        final content = await downloadedFile.readAsString();
+        debugPrint(
+            'UpdateService: File content (first 500 chars): ${content.substring(0, content.length > 500 ? 500 : content.length)}');
+        throw Exception('Le fichier téléchargé semble incomplet ou invalide');
+      }
 
       // Sauvegarder les métadonnées de la mise à jour
       await _prefs.setString('pending_update_version', version.version);
       await _prefs.setInt('pending_update_build', version.buildNumber);
       await _prefs.setString('pending_update_path', filePath);
+      debugPrint('UpdateService: Saved update metadata to SharedPreferences');
 
       return filePath;
-    } catch (e) {
-      debugPrint('Erreur lors du téléchargement: $e');
+    } on DioException catch (e) {
+      debugPrint('UpdateService: DioException during download: ${e.message}');
+      debugPrint(
+          'UpdateService: Response status code: ${e.response?.statusCode}');
+      debugPrint('UpdateService: Response data: ${e.response?.data}');
+      return null;
+    } catch (e, stackTrace) {
+      debugPrint('UpdateService: Error during download: $e');
+      debugPrint('UpdateService: Stack trace: $stackTrace');
       return null;
     }
   }

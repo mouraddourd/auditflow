@@ -167,13 +167,40 @@ jobs:
           BUILD_NUMBER="${{ steps.version.outputs.build_number }}"
           APK_SIZE=$(stat -c%s ./apk/auditflow.apk)
           RELEASE_DATE=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+          RELEASE_NOTES="Build ${BUILD_NUMBER} - Corrections UI/UX et migrations"
           
           # Upload APK to VPS temp location
           scp -i ~/.ssh/id_rsa ./apk/auditflow.apk ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/auditflow.apk
           
           # Upload static files
           scp -i ~/.ssh/id_rsa deploy/downloads/index.html ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/downloads/index.html
-          scp -i ~/.ssh/id_rsa deploy/downloads/releases.json ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/downloads/releases.json 2>/dev/null || true
+          
+          # Generate JSON files locally first
+          jq -n \
+            --arg version "$VERSION" \
+            --argjson buildNumber "$BUILD_NUMBER" \
+            --argjson androidSize "$APK_SIZE" \
+            --arg releaseDate "$RELEASE_DATE" \
+            --arg releaseNotes "$RELEASE_NOTES" \
+            '{version: $version, buildNumber: $buildNumber, androidAvailable: true, androidSize: $androidSize, androidUrl: "/android/auditflow.apk", iosAvailable: false, iosSize: 0, iosUrl: "", releaseDate: $releaseDate, releaseNotes: $releaseNotes}' > version.json
+          
+          jq -n \
+            --arg version "$VERSION" \
+            --argjson buildNumber "$BUILD_NUMBER" \
+            --argjson androidSize "$APK_SIZE" \
+            --arg releaseDate "$RELEASE_DATE" \
+            --arg releaseNotes "$RELEASE_NOTES" \
+            '{latest: {version: $version, buildNumber: $buildNumber, androidAvailable: true, androidSize: $androidSize, androidUrl: "/android/auditflow.apk", iosAvailable: false, iosSize: 0, iosUrl: "", releaseDate: $releaseDate, releaseNotes: $releaseNotes}, releases: [{version: $version, buildNumber: $buildNumber, date: $releaseDate, changes: [$releaseNotes]}], platforms: {android: {available: true, latestApk: "/android/auditflow.apk"}, ios: {available: false, latestIpa: null}}}' > releases.json
+          
+          echo "✅ Generated version.json:"
+          cat version.json
+          echo ""
+          echo "✅ Generated releases.json:"
+          cat releases.json
+          
+          # Upload JSON files to VPS
+          scp -i ~/.ssh/id_rsa version.json ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/downloads/version.json
+          scp -i ~/.ssh/id_rsa releases.json ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/var/downloads/releases.json
           
           # Update releases on VPS
           ssh -i ~/.ssh/id_rsa ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} <<EOF
@@ -189,33 +216,7 @@ jobs:
             # Update latest symlink
             ln -sf "v${VERSION}/auditflow-${VERSION}.apk" android/auditflow.apk
             
-            # Install jq if needed
-            if ! command -v jq &> /dev/null; then
-              sudo apt-get update -qq && sudo apt-get install -y -qq jq
-            fi
-            
-            # Create new release entry
-            NEW_RELEASE='{"version":"${VERSION}","buildNumber":${BUILD_NUMBER},"androidAvailable":true,"androidSize":${APK_SIZE},"androidUrl":"/android/v${VERSION}/auditflow-${VERSION}.apk","iosAvailable":false,"iosSize":0,"iosUrl":"","releaseDate":"${RELEASE_DATE}","releaseNotes":"Build ${BUILD_NUMBER}"}'
-            
-            # Update releases.json
-            if [ -f releases.json ]; then
-              jq --argjson new "\$NEW_RELEASE" '
-                .latest = \$new |
-                .releases = [\$new] + .releases |
-                .platforms.android.available = true |
-                .platforms.android.latestApk = "/android/v${VERSION}/auditflow-${VERSION}.apk"
-              ' releases.json > releases.json.tmp && mv releases.json.tmp releases.json
-            else
-              echo '{"latest":null,"releases":[],"platforms":{"android":{"available":false,"latestApk":null},"ios":{"available":false,"latestIpa":null}}}' > releases.json
-              jq --argjson new "\$NEW_RELEASE" '
-                .latest = \$new |
-                .releases = [\$new] + .releases |
-                .platforms.android.available = true |
-                .platforms.android.latestApk = "/android/v${VERSION}/auditflow-${VERSION}.apk"
-              ' releases.json > releases.json.tmp && mv releases.json.tmp releases.json
-            fi
-            
-            echo "✅ Release ${VERSION} published"
+            echo "✅ Release ${VERSION} (build ${BUILD_NUMBER}) published successfully"
           EOF
 
       - name: Deploy downloads service
