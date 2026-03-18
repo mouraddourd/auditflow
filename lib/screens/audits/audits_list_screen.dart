@@ -215,20 +215,23 @@ class _AuditsListScreenState extends State<AuditsListScreen> {
                             Icon(
                               FontAwesomeIcons.clipboardList,
                               size: 64,
-                              color: Colors.grey[400],
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.4),
                             ),
                             const SizedBox(height: 16),
                             Text(
                               'Aucun audit trouvé',
                               style: theme.textTheme.titleMedium?.copyWith(
-                                color: Colors.grey[600],
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.6),
                               ),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               'Créez votre premier audit pour commencer',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: Colors.grey[500],
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.5),
                               ),
                             ),
                           ],
@@ -444,7 +447,8 @@ class _AuditCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: score / 100,
-                backgroundColor: Colors.grey[800],
+                backgroundColor:
+                    theme.colorScheme.onSurface.withValues(alpha: 0.1),
                 valueColor: AlwaysStoppedAnimation<Color>(statusColor),
                 minHeight: 6,
               ),
@@ -477,7 +481,8 @@ class _AuditCard extends StatelessWidget {
           Row(
             children: [
               Icon(FontAwesomeIcons.calendarDays,
-                  size: 14, color: Colors.grey[500]),
+                  size: 14,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
               const SizedBox(width: 4),
               Text(
                 _formatDate(audit['updated_at'] as String?),

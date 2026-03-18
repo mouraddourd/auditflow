@@ -111,6 +111,8 @@ class _ThemeToggleButtonState extends State<ThemeToggleButton>
                 isDark ? FontAwesomeIcons.sun : FontAwesomeIcons.moon,
                 key: ValueKey(isDark),
                 size: widget.size * 0.5,
+                semanticLabel:
+                    isDark ? 'Passer au thème clair' : 'Passer au thème sombre',
                 color: widget.iconColor ??
                     (isDark
                         ? const Color(0xFFFFB300) // Amber for sun
@@ -132,7 +134,7 @@ class ThemeAppBarAction extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Padding(
       padding: EdgeInsets.only(right: 8),
-      child: ThemeToggleButton(size: 36),
+      child: ThemeToggleButton(size: 44),
     );
   }
 }

@@ -103,7 +103,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 420),
                   child: Container(
-                    padding: const EdgeInsets.all(40),
+                    padding:
+                        EdgeInsets.all(ResponsiveConfig.getPadding(context)),
                     decoration: BoxDecoration(
                       color: theme.brightness == Brightness.dark
                           ? Colors.white.withValues(alpha: 0.03)
@@ -145,7 +146,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             fontSize: 14,
                             color: theme.brightness == Brightness.dark
                                 ? Colors.grey[400]
-                                : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                : theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.6),
                           ),
                           textAlign: TextAlign.center,
                         ).animate().fadeIn(delay: 200.ms, duration: 600.ms),
@@ -242,6 +244,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         if (!_isLogin) ...[
                           TextField(
                             controller: _nameController,
+                            autofillHints: const [AutofillHints.name],
                             decoration: InputDecoration(
                               labelText: 'Nom complet',
                               prefixIcon: const Icon(FontAwesomeIcons.user),
@@ -260,6 +263,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         TextField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
+                          autofillHints: const [AutofillHints.email],
                           decoration: InputDecoration(
                             labelText: 'Email',
                             prefixIcon: const Icon(FontAwesomeIcons.envelope),
@@ -277,6 +281,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         TextField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
+                          autofillHints: const [AutofillHints.password],
                           decoration: InputDecoration(
                             labelText: 'Mot de passe',
                             prefixIcon: const Icon(FontAwesomeIcons.lock),
@@ -285,6 +290,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 _obscurePassword
                                     ? FontAwesomeIcons.eyeSlash
                                     : FontAwesomeIcons.eye,
+                                semanticLabel: _obscurePassword
+                                    ? 'Afficher le mot de passe'
+                                    : 'Masquer le mot de passe',
                               ),
                               onPressed: () {
                                 setState(
@@ -368,7 +376,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           width: double.infinity,
                           child: OutlinedButton.icon(
                             onPressed: () {},
-                            icon: const Icon(FontAwesomeIcons.google, size: 20),
+                            icon: const Icon(FontAwesomeIcons.google,
+                                size: 20, semanticLabel: 'Google'),
                             label: const Text('Continuer avec Google'),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -415,5 +424,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-
-

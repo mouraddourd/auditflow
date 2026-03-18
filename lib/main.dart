@@ -298,7 +298,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         home: Scaffold(
           body: Center(
             child: CircularProgressIndicator(
-              color: Colors.blue,
+              color: AppTheme.lightTheme.colorScheme.primary,
             ),
           ),
         ),
@@ -367,9 +367,10 @@ class _OrganizationCheckWrapperState extends State<OrganizationCheckWrapper> {
               Text(
                 'Chargement...',
                 style: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey[400]
-                      : Colors.grey[600],
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.6),
                 ),
               ),
             ],

@@ -1,0 +1,127 @@
+# Flutter/Dart Essential Rules
+
+## Architecture
+
+- **Layered architecture**: UI Layer (Views + ViewModel/Cubit/Provider) → Data Layer (Repositories + Services)
+- **Feature-first organization**: Group all files for a feature together (e.g., `auth/` contains `auth_viewmodel.dart`, `login_screen.dart`)
+- **Unidirectional data flow**: State flows down (Data → UI), events flow up (UI → Data)
+- **Repository = Single Source of Truth**: Only repositories mutate data; all other classes read from them
+- **Services hold no state**: They only wrap API endpoints
+
+## Naming Conventions
+
+| Kind | Convention | Example |
+|------|------------|---------|
+| Classes, enums, typedefs | `UpperCamelCase` | `MyWidget`, `UserState` |
+| Files, packages | `lowercase_with_underscores` | `user_profile.dart` |
+| Variables, functions | `lowerCamelCase` | `userName`, `fetchData()` |
+
+## Style
+
+- Use `dart format .` — don't manually format
+- Prefer `final` over `var`; use `const` for compile-time constants
+- Use curly braces for all flow control statements
+- Keep lines 80 characters or fewer
+- Prefer relative import paths within a package
+
+## Types
+
+- Type annotate variables without initializers
+- Annotate return types and parameter types on function declarations
+- Use `Future<void>` for async members that don't produce values
+
+## Common Flutter Errors
+
+| Error | Fix |
+|-------|-----|
+| RenderFlex overflowed | Wrap child in `Expanded` or `Flexible` |
+| Vertical viewport unbounded height | Wrap `ListView` in `Expanded` inside `Column` |
+| InputDecorator unbounded width | Wrap `TextField` in `Expanded` or `SizedBox` |
+| setState during build | Use `addPostFrameCallback` in `initState` |
+| RenderBox not laid out | Add size constraints with `SizedBox` or `Expanded` |
+
+## Widgets
+
+- Use `StatelessWidget` when possible
+- Keep `build` methods simple and focused
+- Extract reusable widgets into separate components
+- Use `const` constructors when possible
+
+## State Management
+
+- Keep state as local as possible
+- Avoid unnecessary `StatefulWidget`s
+- Business logic belongs in ViewModel/Cubit/Provider, NOT in widgets
+
+## Testing
+
+- Every test should be able to fail if real code is broken
+- Use `group()` named after the class under test
+- Name tests with "should": `test('should return null when not found', () {...})`
+
+## Documentation
+
+- Use `///` doc comments for public APIs
+- Start with a single-sentence summary
+- Use `[identifier]` to reference in-scope identifiers
+
+---
+
+## UI/UX Design
+
+### Layout & Spacing
+- Use `EdgeInsets` consistently: `all()`, `symmetric()`, `only()`
+- Standard spacing: 4, 8, 12, 16, 24, 32, 48, 64
+- Use `SizedBox` for gaps instead of empty `Container`
+- Respect safe areas with `SafeArea` widget
+- Use `MediaQuery` for responsive layouts
+
+### Colors & Theme
+- Define colors in `ThemeData` - never hardcode
+- Use `Theme.of(context).colorScheme` for semantic colors
+- Support dark mode with `ColorScheme`
+- Use semantic color names: `primary`, `secondary`, `error`, `surface`
+
+### Typography
+- Define text styles in `ThemeData.textTheme`
+- Use `TextTheme` styles: `headlineLarge`, `titleMedium`, `bodySmall`, etc.
+- Respect user's text scaling (`MediaQuery.textScaler`)
+- Use `RichText` for mixed styles in single text
+
+### Components
+- Prefer Material 3 widgets: `FilledButton`, `OutlinedButton`, `TextButton`
+- Use `Card` with `elevation` for containers
+- Use `BottomNavigationBar` or `NavigationRail` for main navigation
+- Use `FloatingActionButton` for primary screen action
+- Prefer `ListView.builder` for long lists
+
+### Forms & Input
+- Use `TextFormField` with `InputDecoration`
+- Show validation errors inline
+- Use `Form` widget for form state management
+- Add `autofillHints` for better UX
+
+### Feedback & Loading
+- Show `CircularProgressIndicator` or `LinearProgressIndicator` for loading
+- Use `SnackBar` for non-critical feedback
+- Use `AlertDialog` or `BottomSheet` for confirmations
+- Disable buttons during async operations
+
+### Accessibility
+- Add `semanticsLabel` for icons
+- Use `Semantics` widget for custom widgets
+- Ensure touch targets are at least 48x48
+- Support screen readers with descriptive labels
+- Test with `SemanticsDebugger`
+
+### Animations
+- Use `AnimatedContainer`, `AnimatedOpacity` for simple transitions
+- Use `Hero` for shared element transitions
+- Keep animations under 300ms for UI feedback
+- Use `AnimationController` for complex animations
+
+### Responsive Design
+- Use `LayoutBuilder` for adaptive layouts
+- Breakpoints: mobile < 600, tablet 600-840, desktop > 840
+- Use `Flexible` and `Expanded` for fluid layouts
+- Consider orientation changes with `OrientationBuilder`

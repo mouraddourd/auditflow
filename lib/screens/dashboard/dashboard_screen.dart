@@ -191,7 +191,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 title: 'Brouillons',
                                 value: '${_stats['draft'] ?? 0}',
                                 icon: FontAwesomeIcons.penToSquare,
-                                color: Colors.grey),
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.6)),
                           ];
                           return isWide
                               ? Row(
@@ -371,12 +372,15 @@ class _DashboardScreenState extends State<DashboardScreen>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(FontAwesomeIcons.clipboardList,
-                                size: 48, color: Colors.grey[400]),
+                                size: 48,
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.4)),
                             const SizedBox(height: 16),
                             Text(
                               'Aucun audit pour le moment',
                               style: theme.textTheme.titleMedium?.copyWith(
-                                color: Colors.grey[600],
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.6),
                               ),
                             ),
                           ],

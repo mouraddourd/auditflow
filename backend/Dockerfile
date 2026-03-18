@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# Install postgresql-client for database checks in entrypoint script
+RUN apk add --no-cache postgresql-client
+
 WORKDIR /app
 
 # Install dependencies first for better layer caching
@@ -19,5 +22,9 @@ RUN npm run build
 # Expose port
 EXPOSE 3000
 
-# Start the application in production after applying migrations
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+# Copy startup script
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
+
+# Start the application with migration handling
+CMD ["./docker-entrypoint.sh"]
