@@ -213,26 +213,18 @@ class _UpdateDialogState extends State<UpdateDialog> {
         },
       );
 
-      if (filePath != null) {
-        final installed = await widget.updateService.installApk(filePath);
-        if (!installed && mounted) {
-          setState(() {
-            _error =
-                'Erreur lors de l\'installation. Vérifiez que vous autorisez les installations d\'applications inconnues.';
-            _isDownloading = false;
-          });
-        }
-      } else if (mounted) {
+      final installed = await widget.updateService.installApk(filePath);
+      if (!installed && mounted) {
         setState(() {
           _error =
-              'Impossible de télécharger la mise à jour.\nVérifiez votre connexion internet.';
+              'Erreur lors de l\'installation. Vérifiez que vous autorisez les installations d\'applications inconnues.';
           _isDownloading = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Erreur: ${e.toString()}';
+          _error = e.toString().replaceAll('Exception: ', '');
           _isDownloading = false;
         });
       }

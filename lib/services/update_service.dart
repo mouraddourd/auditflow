@@ -65,7 +65,7 @@ class UpdateService {
   }
 
   /// Télécharge l'APK et retourne le chemin du fichier
-  Future<String?> downloadApk(
+  Future<String> downloadApk(
     VersionInfo version, {
     required void Function(int received, int total) onProgress,
   }) async {
@@ -77,7 +77,8 @@ class UpdateService {
       // Vérifier les permissions de stockage
       if (!await _requestStoragePermission()) {
         debugPrint('UpdateService: Storage permission denied');
-        throw Exception('Permission de stockage refusée');
+        throw Exception(
+            'Permission de stockage refusée. Vérifiez les paramètres de l\'application.');
       }
       debugPrint('UpdateService: Storage permission granted');
 
@@ -115,6 +116,10 @@ class UpdateService {
       await _dio.download(
         downloadUrl,
         filePath,
+        options: Options(
+          followRedirects: true,
+          validateStatus: (status) => status != null && status < 500,
+        ),
         onReceiveProgress: (received, total) {
           if (total > 0) {
             debugPrint(
@@ -158,11 +163,27 @@ class UpdateService {
       debugPrint(
           'UpdateService: Response status code: ${e.response?.statusCode}');
       debugPrint('UpdateService: Response data: ${e.response?.data}');
-      return null;
+
+      String errorMsg;
+      if (e.response?.statusCode == 404) {
+        errorMsg = 'Fichier non trouvé sur le serveur (404)';
+      } else if (e.type == DioExceptionType.connectionTimeout) {
+        errorMsg = 'Délai de connexion dépassé';
+      } else if (e.type == DioExceptionType.receiveTimeout) {
+        errorMsg = 'Délai de téléchargement dépassé';
+      } else if (e.type == DioExceptionType.connectionError) {
+        errorMsg = 'Erreur de connexion - vérifiez votre réseau';
+      } else if (e.response?.statusCode != null) {
+        errorMsg = 'Erreur serveur: ${e.response?.statusCode}';
+      } else {
+        errorMsg = 'Erreur réseau: ${e.message}';
+      }
+
+      throw Exception(errorMsg);
     } catch (e, stackTrace) {
       debugPrint('UpdateService: Error during download: $e');
       debugPrint('UpdateService: Stack trace: $stackTrace');
-      return null;
+      throw Exception('Erreur inattendue: $e');
     }
   }
 
