@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:open_file/open_file.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 /// Service de mise à jour automatique de l'application
 ///
@@ -288,8 +289,11 @@ class UpdateService {
 
   /// Récupère le SDK Android version
   Future<int?> _getAndroidSdkInt() async {
-    // Cette méthode nécessite un plugin natif
-    // Pour simplifier, on retourne null et on gère le cas
+    if (Platform.isAndroid) {
+      final deviceInfo = DeviceInfoPlugin();
+      final androidInfo = await deviceInfo.androidInfo;
+      return androidInfo.version.sdkInt;
+    }
     return null;
   }
 }
