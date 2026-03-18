@@ -190,7 +190,7 @@ jobs:
             --argjson androidSize "$APK_SIZE" \
             --arg releaseDate "$RELEASE_DATE" \
             --arg releaseNotes "$RELEASE_NOTES" \
-            '{latest: {version: $version, buildNumber: $buildNumber, androidAvailable: true, androidSize: $androidSize, androidUrl: "/android/auditflow.apk", iosAvailable: false, iosSize: 0, iosUrl: "", releaseDate: $releaseDate, releaseNotes: $releaseNotes}, releases: [{version: $version, buildNumber: $buildNumber, date: $releaseDate, changes: [$releaseNotes]}], platforms: {android: {available: true, latestApk: "/android/auditflow.apk"}, ios: {available: false, latestIpa: null}}}' > releases.json
+            '{latest: {version: $version, buildNumber: $buildNumber, androidAvailable: true, androidSize: $androidSize, androidUrl: "/android/auditflow.apk", iosAvailable: false, iosSize: 0, iosUrl: "", releaseDate: $releaseDate, releaseNotes: $releaseNotes}, releases: [{version: $version, buildNumber: $buildNumber, releaseDate: $releaseDate, changes: [$releaseNotes]}], platforms: {android: {available: true, latestApk: "/android/auditflow.apk"}, ios: {available: false, latestIpa: null}}}' > releases.json
           
           echo "✅ Generated version.json:"
           cat version.json
