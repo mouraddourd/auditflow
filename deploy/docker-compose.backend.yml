@@ -7,7 +7,7 @@ networks:
 services:
   backend:
     build:
-      context: ../backend
+      context: ./backend
       dockerfile: Dockerfile
     environment:
       - NODE_ENV=production
