@@ -56,6 +56,8 @@ class ApiService {
     ));
   }
 
+  Dio get dio => _dio;
+
   // ==================== TEMPLATES ====================
 
   Future<Map<String, dynamic>> createTemplate(

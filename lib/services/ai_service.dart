@@ -3,7 +3,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../hive/service.dart';
 import 'api_service.dart';
-import 'auth_service.dart';
 import 'sync_service.dart';
 
 /// AI Analysis result from backend
@@ -53,9 +52,8 @@ class AIService {
   factory AIService() => _instance;
   AIService._internal();
 
-  final Dio _dio = ApiService().dio;
+  Dio get _dio => ApiService().dio;
   final _syncService = SyncService();
-  final _authService = AuthService();
 
   /// Check if AI service is available (online + backend healthy)
   Future<bool> isAvailable() async {
