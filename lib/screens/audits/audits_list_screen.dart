@@ -9,7 +9,9 @@ import 'edit_audit_screen.dart';
 
 class AuditsListScreen extends StatefulWidget {
   final Future<bool> Function(Widget)? onNavigateToPage;
-  const AuditsListScreen({super.key, this.onNavigateToPage});
+  final String? initialStatus;
+  const AuditsListScreen(
+      {super.key, this.onNavigateToPage, this.initialStatus});
 
   @override
   State<AuditsListScreen> createState() => _AuditsListScreenState();
@@ -24,6 +26,7 @@ class _AuditsListScreenState extends State<AuditsListScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedStatus = widget.initialStatus;
     _loadAudits();
   }
 

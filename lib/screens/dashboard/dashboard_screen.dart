@@ -6,6 +6,7 @@ import '../../hive/service.dart';
 import '../../core/config/responsive_config.dart';
 import '../audits/create_audit_screen.dart';
 import '../audits/audit_fill_screen.dart';
+import '../audits/audits_list_screen.dart';
 import '../../core/widgets/sync_status_indicator.dart';
 
 /// Dashboard screen with stats from Hive.
@@ -176,23 +177,35 @@ class _DashboardScreenState extends State<DashboardScreen>
                                 title: 'Total Audits',
                                 value: '${_stats['total'] ?? 0}',
                                 icon: FontAwesomeIcons.clipboardCheck,
-                                color: theme.colorScheme.primary),
+                                color: theme.colorScheme.primary,
+                                onTap: () => widget.onNavigate?.call(1)),
                             _StatCard(
                                 title: 'Terminés',
                                 value: '${_stats['completed'] ?? 0}',
                                 icon: FontAwesomeIcons.circleCheck,
-                                color: Colors.green),
+                                color: Colors.green,
+                                onTap: () => widget.onNavigateToPage?.call(
+                                      AuditsListScreen(
+                                          initialStatus: 'completed'),
+                                    )),
                             _StatCard(
                                 title: 'En cours',
                                 value: '${_stats['in_progress'] ?? 0}',
                                 icon: FontAwesomeIcons.spinner,
-                                color: Colors.orange),
+                                color: Colors.orange,
+                                onTap: () => widget.onNavigateToPage?.call(
+                                      AuditsListScreen(
+                                          initialStatus: 'in_progress'),
+                                    )),
                             _StatCard(
                                 title: 'Brouillons',
                                 value: '${_stats['draft'] ?? 0}',
                                 icon: FontAwesomeIcons.penToSquare,
                                 color: theme.colorScheme.onSurface
-                                    .withValues(alpha: 0.6)),
+                                    .withValues(alpha: 0.6),
+                                onTap: () => widget.onNavigateToPage?.call(
+                                      AuditsListScreen(initialStatus: 'draft'),
+                                    )),
                           ];
                           return isWide
                               ? Row(
@@ -488,55 +501,60 @@ class _StatCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
+  final VoidCallback? onTap;
 
   const _StatCard({
     required this.title,
     required this.value,
     required this.icon,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.brightness == Brightness.dark
-              ? Colors.white.withValues(alpha: 0.06)
-              : Colors.black.withValues(alpha: 0.08),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: theme.cardTheme.color,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: theme.brightness == Brightness.dark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.08),
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 24),
             ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            value,
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
+            const SizedBox(height: 16),
+            Text(
+              value,
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

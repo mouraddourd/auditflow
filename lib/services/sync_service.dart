@@ -91,6 +91,8 @@ class SyncService {
 
   Timer? _periodicSyncTimer;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  Timer? _connectivityDebounceTimer;
+  bool _wasOffline = true;
 
   /// Initialize sync service
   Future<void> initialize() async {
@@ -121,14 +123,48 @@ class SyncService {
   void _listenToConnectivity() {
     _connectivitySubscription = Connectivity()
         .onConnectivityChanged
-        .listen((List<ConnectivityResult> result) {
+        .listen((List<ConnectivityResult> result) async {
+      // Cancel any pending debounce timer
+      _connectivityDebounceTimer?.cancel();
+
       // Check if any connection is available (not just 'none')
       final hasConnection = !result.contains(ConnectivityResult.none);
-      if (hasConnection) {
-        // Came online - process queue
-        debugPrint('SyncService: Connectivity restored, processing queue...');
-        processQueue();
+
+      if (!hasConnection) {
+        _wasOffline = true;
+        debugPrint('SyncService: Device went offline');
+        return;
       }
+
+      // We have connection - but only sync if we were previously offline
+      // This prevents multiple syncs when switching between wifi/mobile
+      if (!_wasOffline) {
+        debugPrint(
+            'SyncService: Already online, skipping redundant sync trigger');
+        return;
+      }
+
+      // Debounce to avoid rapid sync triggers
+      _connectivityDebounceTimer = Timer(const Duration(seconds: 2), () async {
+        if (_isSyncing) {
+          debugPrint(
+              'SyncService: Already syncing, skipping connectivity-triggered sync');
+          return;
+        }
+
+        debugPrint(
+            'SyncService: Connectivity restored after being offline, processing queue...');
+        _wasOffline = false;
+
+        try {
+          await processQueue();
+          debugPrint(
+              'SyncService: Queue processed successfully after connectivity restored');
+        } catch (e) {
+          debugPrint(
+              'SyncService: Error processing queue after connectivity restored: $e');
+        }
+      });
     });
   }
 
@@ -136,6 +172,7 @@ class SyncService {
   void dispose() {
     _periodicSyncTimer?.cancel();
     _connectivitySubscription?.cancel();
+    _connectivityDebounceTimer?.cancel();
   }
 
   /// Check if device is online

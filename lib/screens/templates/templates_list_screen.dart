@@ -230,6 +230,7 @@ class _TemplatesListScreenState extends State<TemplatesListScreen> {
                                       _selectedCategory = null;
                                       _currentPage = 1;
                                     });
+                                    _loadTemplates();
                                   },
                                   backgroundColor: theme.cardTheme.color,
                                   selectedColor: theme.colorScheme.primary
