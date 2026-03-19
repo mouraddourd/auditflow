@@ -9,6 +9,7 @@ import '../../core/config/responsive_config.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../hive/service.dart';
 import '../../services/sync_service.dart';
+import '../../widgets/ai_analysis_card.dart';
 
 /// Écran de remplissage d'audit avec questions chargées depuis Hive.
 ///
@@ -753,15 +754,28 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
             child: ListView.builder(
               padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
               itemCount: _questions.length +
-                  (_isReadOnly && _auditScore != null ? 1 : 0),
+                  (_isReadOnly && _auditScore != null ? 1 : 0) +
+                  (_isReadOnly ? 1 : 0), // +1 for AI card when read-only
               itemBuilder: (context, index) {
                 // Carte de score en première position en mode lecture seule
                 if (_isReadOnly && _auditScore != null && index == 0) {
                   return _buildScoreCard();
                 }
 
+                // AI Analysis card at the end when read-only
+                final aiCardIndex = _questions.length +
+                    (_isReadOnly && _auditScore != null ? 1 : 0);
+                if (_isReadOnly && index == aiCardIndex) {
+                  return AIAnalysisCard(
+                    auditId: widget.auditId,
+                    onAnalysisComplete: () {
+                      // Optional: refresh UI after analysis
+                    },
+                  );
+                }
+
                 final questionIndex =
-                    _isReadOnly && _auditScore != null ? index - 1 : index;
+                    (_isReadOnly && _auditScore != null) ? index - 1 : index;
                 final question = _questions[questionIndex];
                 final questionId = question['id'] as String;
                 final currentAnswer =
@@ -788,8 +802,8 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color:
-                                  theme.colorScheme.primary.withValues(alpha: 0.15),
+                              color: theme.colorScheme.primary
+                                  .withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -1046,8 +1060,10 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                 color: Theme.of(context).cardTheme.color,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                    color:
-                        Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .outline
+                        .withValues(alpha: 0.2)),
               ),
               child: Row(
                 children: [
@@ -1192,7 +1208,10 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
               color: Theme.of(context).cardTheme.color,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                color: Theme.of(context)
+                    .colorScheme
+                    .outline
+                    .withValues(alpha: 0.3),
               ),
             ),
             child: Row(
