@@ -793,6 +793,7 @@ class HiveService {
     await Hive.box(organizationMembersBox).clear();
     await Hive.box(categoriesBox).clear();
     await Hive.box(usersBox).clear();
+    await Hive.box(syncQueueBox).clear();
     _organizationId = null;
     _userId = null;
     final prefs = await SharedPreferences.getInstance();

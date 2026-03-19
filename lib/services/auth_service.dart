@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/config/api_config.dart';
+import '../hive/service.dart';
 
 /// Authentication result
 class AuthResult {
@@ -276,6 +277,12 @@ class AuthService {
     await prefs.remove(_userIdKey);
     await prefs.remove(_userEmailKey);
     await prefs.remove(_userNameKey);
+    await prefs.remove('user_phone');
+    await prefs.remove('user_avatar');
+    await prefs.remove('organizationId');
+
+    // Clear all Hive data to prevent stale data on reconnection
+    await HiveService().clear();
   }
 
   /// Save authentication data to local storage
