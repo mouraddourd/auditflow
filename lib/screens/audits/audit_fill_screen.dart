@@ -752,7 +752,11 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
           ),
           Expanded(
             child: ListView.builder(
-              padding: EdgeInsets.all(ResponsiveConfig.getPadding(context)),
+              padding:
+                  EdgeInsets.all(ResponsiveConfig.getPadding(context)).copyWith(
+                bottom: ResponsiveConfig.getPadding(context) +
+                    (_isReadOnly ? 80 : 0),
+              ),
               itemCount: _questions.length +
                   (_isReadOnly && _auditScore != null ? 1 : 0) +
                   (_isReadOnly ? 1 : 0), // +1 for AI card when read-only
