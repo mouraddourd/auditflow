@@ -9,20 +9,14 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    extra_hosts:
-      - "host.docker.internal:185.143.101.194"
+    network_mode: host
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}
       - PORT=${BACKEND_PORT:-3000}
       - JWT_SECRET=${JWT_SECRET}
       - OLLAMA_URL=${OLLAMA_URL:-http://localhost:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-phi3}
-    networks:
-      - proxy_public
-      - internal_prod
     depends_on:
       db:
         condition: service_healthy
