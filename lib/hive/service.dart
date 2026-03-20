@@ -69,6 +69,13 @@ class HiveService {
   Future<void> saveOrganization(Map<String, dynamic> org) async {
     final box = Hive.box(organizationsBox);
     await box.put(org['id'], org);
+
+    // Set organization ID so sync can work
+    setOrganization(org['id'] as String);
+
+    // Save to SharedPreferences for persistence
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('organizationId', org['id'] as String);
   }
 
   List<Map<String, dynamic>> getOrganizations() {
