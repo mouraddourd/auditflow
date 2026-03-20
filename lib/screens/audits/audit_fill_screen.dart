@@ -5,10 +5,12 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../core/config/responsive_config.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../hive/service.dart';
 import '../../services/sync_service.dart';
+import '../../services/ai_service.dart';
 import '../../widgets/ai_analysis_card.dart';
 import '../../widgets/anomalies_insights_card.dart';
 
@@ -344,7 +346,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
     }
   }
 
-  /// Exporte l'audit au format PDF.
+  /// Exporte l'audit au format PDF avec insights IA.
   Future<void> _exportToPdf() async {
     if (_isExporting) return;
 
@@ -356,6 +358,12 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
       final pdf = pw.Document();
       final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
       final exportDate = dateFormat.format(DateTime.now());
+
+      // Récupérer les insights IA
+      AuditInsights? insights;
+      if (await SyncService().isOnline()) {
+        insights = await AIService().getInsights(widget.auditId);
+      }
 
       pdf.addPage(
         pw.MultiPage(
@@ -382,7 +390,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                           vertical: 8,
                         ),
                         decoration: pw.BoxDecoration(
-                          color: PdfColor.fromHex('#4CAF50'),
+                          color: _getPdfScoreColor(_auditScore!),
                           borderRadius: pw.BorderRadius.circular(20),
                         ),
                         child: pw.Text(
@@ -411,7 +419,27 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
             );
           },
           build: (context) {
-            return [
+            final content = <pw.Widget>[];
+
+            // Section Insights IA si disponible
+            if (insights != null) {
+              content.add(_buildInsightsSection(insights));
+              content.add(pw.SizedBox(height: 24));
+            }
+
+            // Section Questions/Réponses
+            content.add(
+              pw.Text(
+                'Détail des réponses',
+                style: pw.TextStyle(
+                  fontSize: 16,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            );
+            content.add(pw.SizedBox(height: 12));
+
+            content.add(
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: _questions.asMap().entries.map((entry) {
@@ -503,7 +531,9 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                   );
                 }).toList(),
               ),
-            ];
+            );
+
+            return content;
           },
           footer: (context) {
             return pw.Column(
@@ -514,7 +544,7 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
-                      'AuditFlow - Rapport d\'audit',
+                      'AuditFlow - Rapport d\'audit enrichi par IA',
                       style: pw.TextStyle(
                         fontSize: 10,
                         color: PdfColor.fromHex('#999999'),
@@ -543,28 +573,41 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
 
       await file.writeAsBytes(await pdf.save());
 
-      // Ouvrir le PDF avec l'application par défaut sur Windows
-      await Process.run('cmd', ['/c', 'start', filePath], runInShell: true);
-
+      // Partager le PDF avec share_plus (multi-plateforme)
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text('PDF ouvert: $fileName'),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
+        final result = await Share.shareXFiles(
+          [XFile(filePath)],
+          subject: 'Rapport d\'audit: ${widget.auditTitle}',
         );
+
+        if (result.status == ShareResultStatus.unavailable) {
+          // Fallback: ouvrir avec l'application par défaut sur Windows
+          if (Platform.isWindows) {
+            await Process.run('cmd', ['/c', 'start', filePath],
+                runInShell: true);
+          }
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text('PDF exporté: $fileName'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -581,6 +624,205 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
           _isExporting = false;
         });
       }
+    }
+  }
+
+  /// Construit la section Insights IA pour le PDF
+  pw.Widget _buildInsightsSection(AuditInsights insights) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Container(
+          padding: const pw.EdgeInsets.all(12),
+          decoration: pw.BoxDecoration(
+            color: PdfColor.fromHex('#E3F2FD'),
+            borderRadius: pw.BorderRadius.circular(8),
+          ),
+          child: pw.Row(
+            children: [
+              pw.Text(
+                '🤖 Insights IA',
+                style: pw.TextStyle(
+                  fontSize: 16,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColor.fromHex('#1976D2'),
+                ),
+              ),
+              pw.SizedBox(width: 12),
+              pw.Text(
+                'Basé sur ${insights.totalAudits} audits historiques',
+                style: pw.TextStyle(
+                  fontSize: 10,
+                  color: PdfColor.fromHex('#666666'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        pw.SizedBox(height: 16),
+
+        // Scores comparés
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+          children: [
+            _buildScoreBox(
+                'Score actuel', insights.currentScore?.toString() ?? '-'),
+            _buildScoreBox('Moyenne', insights.averageScore.toString()),
+            if (insights.previousScore != null)
+              _buildScoreBox('Précédent', insights.previousScore.toString()),
+          ],
+        ),
+        pw.SizedBox(height: 12),
+
+        // Tendance
+        pw.Container(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: pw.BoxDecoration(
+            color: _getPdfTrendColor(insights.trend),
+            borderRadius: pw.BorderRadius.circular(20),
+          ),
+          child: pw.Text(
+            'Tendance: ${_getTrendLabel(insights.trend)}',
+            style: pw.TextStyle(
+              fontSize: 10,
+              color: PdfColor.fromHex('#FFFFFF'),
+            ),
+          ),
+        ),
+        pw.SizedBox(height: 20),
+
+        // Anomalies
+        if (insights.hasAnomalies) ...[
+          pw.Text(
+            '⚠️ Anomalies détectées',
+            style: pw.TextStyle(
+              fontSize: 14,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColor.fromHex('#D32F2F'),
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          ...insights.anomalies.map((a) => pw.Container(
+                margin: const pw.EdgeInsets.only(bottom: 8),
+                padding: const pw.EdgeInsets.all(10),
+                decoration: pw.BoxDecoration(
+                  color: _getPdfSeverityColor(a.severity),
+                  borderRadius: pw.BorderRadius.circular(6),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      a.title,
+                      style: pw.TextStyle(
+                        fontSize: 11,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      a.description,
+                      style: pw.TextStyle(fontSize: 10),
+                    ),
+                  ],
+                ),
+              )),
+          pw.SizedBox(height: 16),
+        ],
+
+        // Patterns
+        if (insights.hasPatterns) ...[
+          pw.Text(
+            '📊 Tendances',
+            style: pw.TextStyle(
+              fontSize: 14,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColor.fromHex('#1976D2'),
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          ...insights.patterns.map((p) => pw.Container(
+                margin: const pw.EdgeInsets.only(bottom: 6),
+                padding: const pw.EdgeInsets.all(10),
+                decoration: pw.BoxDecoration(
+                  color: PdfColor.fromHex('#E8F5E9'),
+                  borderRadius: pw.BorderRadius.circular(6),
+                ),
+                child: pw.Text(
+                  p.description,
+                  style: pw.TextStyle(fontSize: 10),
+                ),
+              )),
+        ],
+      ],
+    );
+  }
+
+  pw.Widget _buildScoreBox(String label, String value) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: pw.BoxDecoration(
+        color: PdfColor.fromHex('#F5F5F5'),
+        borderRadius: pw.BorderRadius.circular(8),
+      ),
+      child: pw.Column(
+        children: [
+          pw.Text(
+            value,
+            style: pw.TextStyle(
+              fontSize: 18,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          pw.Text(
+            label,
+            style: pw.TextStyle(
+              fontSize: 9,
+              color: PdfColor.fromHex('#666666'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  PdfColor _getPdfScoreColor(int score) {
+    if (score >= 80) return PdfColor.fromHex('#4CAF50');
+    if (score >= 60) return PdfColor.fromHex('#FF9800');
+    return PdfColor.fromHex('#F44336');
+  }
+
+  PdfColor _getPdfTrendColor(String trend) {
+    switch (trend) {
+      case 'improving':
+        return PdfColor.fromHex('#4CAF50');
+      case 'declining':
+        return PdfColor.fromHex('#F44336');
+      default:
+        return PdfColor.fromHex('#2196F3');
+    }
+  }
+
+  PdfColor _getPdfSeverityColor(String severity) {
+    switch (severity) {
+      case 'high':
+        return PdfColor.fromHex('#FFEBEE');
+      case 'medium':
+        return PdfColor.fromHex('#FFF3E0');
+      default:
+        return PdfColor.fromHex('#E3F2FD');
+    }
+  }
+
+  String _getTrendLabel(String trend) {
+    switch (trend) {
+      case 'improving':
+        return 'En hausse ↑';
+      case 'declining':
+        return 'En baisse ↓';
+      default:
+        return 'Stable →';
     }
   }
 
