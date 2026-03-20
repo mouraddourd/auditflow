@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../core/theme/theme_provider.dart';
+import '../../core/providers/organization_provider.dart';
 import '../categories/categories_management_screen.dart';
 import '../profile/profile_management_screen.dart';
+import '../organization/invite_members_screen.dart';
 import '../../services/sync_service.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -45,6 +47,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return _SubscriptionPage(onBack: _goBack);
     } else if (_currentPage == 'sync') {
       return _SyncPage(onBack: _goBack);
+    } else if (_currentPage == 'invite') {
+      return _InvitePage(onBack: _goBack);
     }
 
     final settingsSections = [
@@ -91,6 +95,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             'title': 'Synchronisation',
             'subtitle': 'Gérer les données hors-ligne',
             'page': 'sync'
+          },
+        ],
+      },
+      {
+        'title': 'Organisation',
+        'items': [
+          {
+            'icon': FontAwesomeIcons.userPlus,
+            'title': 'Inviter des membres',
+            'subtitle': 'Gérer les invitations',
+            'page': 'invite'
           },
         ],
       },
@@ -713,6 +728,39 @@ class _SyncPageState extends State<_SyncPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Invite members page wrapper
+class _InvitePage extends StatelessWidget {
+  final VoidCallback onBack;
+
+  const _InvitePage({required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    final orgProvider = context.watch<OrganizationProvider>();
+    final currentOrg = orgProvider.activeOrganization;
+
+    if (currentOrg == null) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(FontAwesomeIcons.arrowLeft),
+            onPressed: onBack,
+          ),
+          title: const Text('Inviter des membres'),
+        ),
+        body: const Center(
+          child: Text('Aucune organisation sélectionnée'),
+        ),
+      );
+    }
+
+    return InviteMembersScreen(
+      organizationId: currentOrg.id,
+      organizationName: currentOrg.name,
     );
   }
 }

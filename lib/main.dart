@@ -5,6 +5,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:app_links/app_links.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'core/widgets/theme_toggle_button.dart';
@@ -15,6 +16,7 @@ import 'services/sync_service.dart';
 import 'hive/service.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/organization/organization_onboarding_screen.dart';
+import 'screens/organization/invitation_screen.dart';
 import 'screens/dashboard/dashboard_screen.dart';
 import 'screens/audits/audits_list_screen.dart';
 import 'screens/templates/templates_list_screen.dart';
@@ -165,14 +167,60 @@ class _AuthWrapperState extends State<AuthWrapper> {
   String? _userId;
   String? _token;
   bool _hasCheckedForUpdate = false;
+  String? _pendingInvitationToken;
 
   final _authService = AuthService();
   final _hiveService = HiveService();
+  late final AppLinks _appLinks;
 
   @override
   void initState() {
     super.initState();
+    _initAppLinks();
     _checkExistingAuth();
+  }
+
+  /// Initialize deep link handling
+  void _initAppLinks() {
+    _appLinks = AppLinks();
+
+    // Handle initial link if app was opened from a link
+    _appLinks.getInitialLink().then((uri) {
+      if (uri != null) {
+        _handleDeepLink(uri);
+      }
+    });
+
+    // Listen for links while app is running
+    _appLinks.uriLinkStream.listen((uri) {
+      _handleDeepLink(uri);
+    });
+  }
+
+  /// Handle deep links for invitation flow
+  void _handleDeepLink(Uri uri) {
+    debugPrint('AuthWrapper: Received deep link: $uri');
+
+    // Check if it's an invitation link
+    // Format: auditflow://join/{token} or https://auditflow.duckdns.org/join/{token}
+    if (uri.host == 'join' ||
+        uri.pathSegments.isNotEmpty && uri.pathSegments.first == 'join') {
+      String? token;
+      if (uri.host == 'join') {
+        // auditflow://join/{token}
+        token = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
+      } else {
+        // https://auditflow.duckdns.org/join/{token}
+        token = uri.pathSegments.length > 1 ? uri.pathSegments[1] : null;
+      }
+
+      if (token != null && token.isNotEmpty) {
+        debugPrint('AuthWrapper: Invitation token received: $token');
+        setState(() {
+          _pendingInvitationToken = token;
+        });
+      }
+    }
   }
 
   /// Check if user is already authenticated on app start
@@ -278,6 +326,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
     await _authService.logout();
     await _hiveService.clear();
 
+    if (!mounted) return;
+
     final orgProvider = context.read<OrganizationProvider>();
     orgProvider.clear();
 
@@ -301,6 +351,23 @@ class _AuthWrapperState extends State<AuthWrapper> {
               color: AppTheme.lightTheme.colorScheme.primary,
             ),
           ),
+        ),
+      );
+    }
+
+    // Show invitation screen if pending token
+    if (_pendingInvitationToken != null && !_isLoggedIn) {
+      return MaterialApp(
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        home: InvitationScreen(
+          token: _pendingInvitationToken!,
+          onLogin: _login,
+          onInvitationAccepted: () {
+            setState(() {
+              _pendingInvitationToken = null;
+            });
+          },
         ),
       );
     }
