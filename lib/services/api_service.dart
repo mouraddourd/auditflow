@@ -29,6 +29,12 @@ class ApiService {
         debugPrint('ApiService: ${options.method} ${options.uri}');
         debugPrint('ApiService: Request data=${options.data}');
 
+        // Add JWT token to Authorization header
+        final token = await AuthService().getToken();
+        if (token != null) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+
         // Add user-id header from AuthService
         final userId = await AuthService().getUserId();
         if (userId != null) {
