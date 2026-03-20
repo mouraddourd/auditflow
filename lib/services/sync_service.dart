@@ -248,6 +248,14 @@ class SyncService {
       }
 
       final entries = getPendingMutations();
+      debugPrint('SyncService: Found ${entries.length} pending mutations');
+
+      // Log all entities in queue for debugging
+      for (final entry in entries) {
+        debugPrint(
+            'SyncService: Queue entry: ${entry.entityType} ${entry.mutationType} ${entry.entityId}');
+      }
+
       // Priorité: template -> category -> audit -> answer, puis date (createdAt)
       final priority = {
         'template': 1,
@@ -261,6 +269,11 @@ class SyncService {
         if (pa != pb) return pa.compareTo(pb);
         return a.createdAt.compareTo(b.createdAt);
       });
+
+      debugPrint('SyncService: Processing in order:');
+      for (final entry in entries) {
+        debugPrint('  ${entry.entityType} -> ${entry.entityId}');
+      }
 
       debugPrint('SyncService: Found ${entries.length} pending mutations');
 
