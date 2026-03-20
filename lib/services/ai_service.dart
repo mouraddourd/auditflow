@@ -59,6 +59,181 @@ class AIAnalysis {
       summary.isNotEmpty || strengths.isNotEmpty || concerns.isNotEmpty;
 }
 
+/// Detected anomaly in audit history
+class Anomaly {
+  final String type;
+  final String severity;
+  final String title;
+  final String description;
+  final int occurrences;
+  final DateTime firstSeen;
+  final DateTime lastSeen;
+  final List<String>? affectedQuestions;
+
+  Anomaly({
+    required this.type,
+    required this.severity,
+    required this.title,
+    required this.description,
+    required this.occurrences,
+    required this.firstSeen,
+    required this.lastSeen,
+    this.affectedQuestions,
+  });
+
+  factory Anomaly.fromJson(Map<String, dynamic> json) {
+    return Anomaly(
+      type: json['type'] ?? '',
+      severity: json['severity'] ?? 'low',
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      occurrences: json['occurrences'] ?? 1,
+      firstSeen: DateTime.tryParse(json['firstSeen'] ?? '') ?? DateTime.now(),
+      lastSeen: DateTime.tryParse(json['lastSeen'] ?? '') ?? DateTime.now(),
+      affectedQuestions: json['affectedQuestions'] != null
+          ? List<String>.from(json['affectedQuestions'])
+          : null,
+    );
+  }
+
+  bool get isHigh => severity == 'high';
+  bool get isMedium => severity == 'medium';
+  bool get isLow => severity == 'low';
+}
+
+/// Detected pattern in audit responses
+class Pattern {
+  final String type;
+  final String? category;
+  final String description;
+  final int dataPoints;
+
+  Pattern({
+    required this.type,
+    this.category,
+    required this.description,
+    required this.dataPoints,
+  });
+
+  factory Pattern.fromJson(Map<String, dynamic> json) {
+    return Pattern(
+      type: json['type'] ?? 'stable',
+      category: json['category'],
+      description: json['description'] ?? '',
+      dataPoints: json['dataPoints'] ?? 0,
+    );
+  }
+
+  bool get isImprovement => type == 'improvement';
+  bool get isDecline => type == 'decline';
+  bool get isStable => type == 'stable';
+}
+
+/// Audit insights with historical analysis
+class AuditInsights {
+  final Map<String, dynamic> currentAudit;
+  final Map<String, dynamic> history;
+  final List<Anomaly> anomalies;
+  final List<Pattern> patterns;
+  final DateTime generatedAt;
+
+  AuditInsights({
+    required this.currentAudit,
+    required this.history,
+    required this.anomalies,
+    required this.patterns,
+    required this.generatedAt,
+  });
+
+  factory AuditInsights.fromJson(Map<String, dynamic> json) {
+    final insights = json['insights'] as Map<String, dynamic>? ?? json;
+    return AuditInsights(
+      currentAudit: insights['currentAudit'] as Map<String, dynamic>? ?? {},
+      history: insights['history'] as Map<String, dynamic>? ?? {},
+      anomalies: (insights['anomalies'] as List<dynamic>? ?? [])
+          .map((a) => Anomaly.fromJson(a as Map<String, dynamic>))
+          .toList(),
+      patterns: (insights['patterns'] as List<dynamic>? ?? [])
+          .map((p) => Pattern.fromJson(p as Map<String, dynamic>))
+          .toList(),
+      generatedAt:
+          DateTime.tryParse(insights['generatedAt'] ?? '') ?? DateTime.now(),
+    );
+  }
+
+  int? get currentScore => currentAudit['score'] as int?;
+  int get totalAudits => history['totalAudits'] as int? ?? 0;
+  int get averageScore => history['averageScore'] as int? ?? 0;
+  String get trend => history['trend'] as String? ?? 'stable';
+  int? get previousScore => history['previousScore'] as int?;
+
+  bool get hasAnomalies => anomalies.isNotEmpty;
+  bool get hasPatterns => patterns.isNotEmpty;
+  bool get isTrendingUp => trend == 'improving';
+  bool get isTrendingDown => trend == 'declining';
+}
+
+/// Real-time suggestions for audit in progress
+class RealTimeSuggestions {
+  final int currentScore;
+  final int predictedScore;
+  final double confidence;
+  final List<RTAlert> alerts;
+  final List<String> suggestions;
+  final double progress;
+
+  RealTimeSuggestions({
+    required this.currentScore,
+    required this.predictedScore,
+    required this.confidence,
+    required this.alerts,
+    required this.suggestions,
+    required this.progress,
+  });
+
+  factory RealTimeSuggestions.fromJson(Map<String, dynamic> json) {
+    final suggestions = json['suggestions'] as Map<String, dynamic>? ?? json;
+    return RealTimeSuggestions(
+      currentScore: suggestions['currentScore'] as int? ?? 0,
+      predictedScore: suggestions['predictedScore'] as int? ?? 0,
+      confidence: (suggestions['confidence'] as num?)?.toDouble() ?? 0.0,
+      alerts: (suggestions['alerts'] as List<dynamic>? ?? [])
+          .map((a) => RTAlert.fromJson(a as Map<String, dynamic>))
+          .toList(),
+      suggestions: List<String>.from(suggestions['suggestions'] ?? []),
+      progress: (suggestions['progress'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+
+  bool get hasAlerts => alerts.isNotEmpty;
+  bool get hasSuggestions => suggestions.isNotEmpty;
+}
+
+/// Alert during audit
+class RTAlert {
+  final String type;
+  final String message;
+  final String? questionId;
+
+  RTAlert({
+    required this.type,
+    required this.message,
+    this.questionId,
+  });
+
+  factory RTAlert.fromJson(Map<String, dynamic> json) {
+    return RTAlert(
+      type: json['type'] ?? 'info',
+      message: json['message'] ?? '',
+      questionId: json['questionId'] as String?,
+    );
+  }
+
+  bool get isDanger => type == 'danger';
+  bool get isWarning => type == 'warning';
+  bool get isInfo => type == 'info';
+}
+
 /// Service for AI analysis via Ollama backend
 class AIService {
   static final AIService _instance = AIService._internal();
@@ -173,5 +348,75 @@ class AIService {
     debugPrint('AI: Calling analyzeAudit with ${responses.length} responses');
 
     return analyzeAudit(auditData);
+  }
+
+  /// Get audit insights with historical analysis
+  ///
+  /// Returns anomalies, patterns, and score trends based on audit history
+  Future<AuditInsights?> getInsights(String auditId) async {
+    if (!await _syncService.isOnline()) {
+      debugPrint('AI: Device offline, cannot get insights');
+      return null;
+    }
+
+    try {
+      final response = await _dio.get(
+        '/ai/insights/$auditId',
+        options: Options(
+          sendTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      );
+
+      if (response.data['success'] == true) {
+        return AuditInsights.fromJson(response.data);
+      }
+
+      debugPrint('AI insights failed: ${response.data['error']}');
+      return null;
+    } on DioException catch (e) {
+      debugPrint('AI insights DioException: ${e.message}');
+      return null;
+    } catch (e) {
+      debugPrint('AI insights error: $e');
+      return null;
+    }
+  }
+
+  /// Get real-time suggestions for audit in progress
+  ///
+  /// [answers] should be a list of {questionId, value}
+  Future<RealTimeSuggestions?> getRealTimeSuggestions(
+    String auditId,
+    List<Map<String, String>> answers,
+  ) async {
+    if (!await _syncService.isOnline()) {
+      debugPrint('AI: Device offline, cannot get real-time suggestions');
+      return null;
+    }
+
+    try {
+      final response = await _dio.post(
+        '/ai/real-time-suggestions/$auditId',
+        data: {'answers': answers},
+        options: Options(
+          sendTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 15),
+        ),
+      );
+
+      if (response.data['success'] == true) {
+        return RealTimeSuggestions.fromJson(response.data);
+      }
+
+      debugPrint('AI real-time suggestions failed: ${response.data['error']}');
+      return null;
+    } on DioException catch (e) {
+      debugPrint('AI real-time suggestions DioException: ${e.message}');
+      return null;
+    } catch (e) {
+      debugPrint('AI real-time suggestions error: $e');
+      return null;
+    }
   }
 }

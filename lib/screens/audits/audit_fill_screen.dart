@@ -10,6 +10,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../hive/service.dart';
 import '../../services/sync_service.dart';
 import '../../widgets/ai_analysis_card.dart';
+import '../../widgets/anomalies_insights_card.dart';
 
 /// Écran de remplissage d'audit avec questions chargées depuis Hive.
 ///
@@ -770,11 +771,19 @@ class _AuditFillScreenState extends State<AuditFillScreen> {
                 final aiCardIndex = _questions.length +
                     (_isReadOnly && _auditScore != null ? 1 : 0);
                 if (_isReadOnly && index == aiCardIndex) {
-                  return AIAnalysisCard(
-                    auditId: widget.auditId,
-                    onAnalysisComplete: () {
-                      // Optional: refresh UI after analysis
-                    },
+                  return Column(
+                    children: [
+                      AIAnalysisCard(
+                        auditId: widget.auditId,
+                        onAnalysisComplete: () {
+                          // Optional: refresh UI after analysis
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      AnomaliesInsightsCard(
+                        auditId: widget.auditId,
+                      ),
+                    ],
                   );
                 }
 
