@@ -42,6 +42,19 @@ class AIAnalysis {
     );
   }
 
+  /// Convert to JSON for debug logging
+  Map<String, dynamic> toJson() => {
+        'summary': summary,
+        'strengths': strengths,
+        'concerns': concerns,
+        'estimatedScore': estimatedScore,
+        'recommendations': recommendations,
+        'model': model,
+        'generatedAt': generatedAt.toIso8601String(),
+        'hasContent': hasContent,
+      };
+
+  /// Check if analysis has meaningful content
   bool get hasContent =>
       summary.isNotEmpty || strengths.isNotEmpty || concerns.isNotEmpty;
 }
@@ -115,14 +128,20 @@ class AIService {
   /// Convenience method to analyze audit by ID
   /// Fetches audit data from Hive and formats it for AI analysis
   Future<AIAnalysis?> analyzeAuditById(String auditId) async {
+    debugPrint('AI: analyzeAuditById called for auditId: $auditId');
     final hive = HiveService();
     final audit = hive.getAuditById(auditId);
-    if (audit == null) return null;
+    if (audit == null) {
+      debugPrint('AI: Audit not found in Hive: $auditId');
+      return null;
+    }
 
     final template = hive.getTemplateById(audit['template_id'] as String);
     final questions =
         hive.getQuestionsForTemplate(audit['template_id'] as String);
     final answers = hive.getAnswersForAudit(auditId);
+
+    debugPrint('AI: Found ${answers.length} answers for audit');
 
     // Format responses
     final responses = <Map<String, dynamic>>[];
@@ -144,6 +163,8 @@ class AIService {
       'templateDescription': template?['description'],
       'responses': responses,
     };
+
+    debugPrint('AI: Calling analyzeAudit with ${responses.length} responses');
 
     return analyzeAudit(auditData);
   }
