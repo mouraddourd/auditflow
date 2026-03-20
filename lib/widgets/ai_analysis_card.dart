@@ -5,7 +5,7 @@ import '../services/ai_service.dart';
 import '../services/sync_service.dart';
 
 /// AI Analysis card widget for audit detail screen
-/// 
+///
 /// Shows:
 /// - Offline state (if no internet)
 /// - Ready to analyze state (button to start)
@@ -40,7 +40,7 @@ class _AIAnalysisCardState extends State<AIAnalysisCard> {
   Future<void> _checkStatus() async {
     final online = await SyncService().isOnline();
     final available = online ? await AIService().isAvailable() : false;
-    
+
     setState(() {
       _isOnline = online;
       _isAvailable = available;
@@ -49,14 +49,14 @@ class _AIAnalysisCardState extends State<AIAnalysisCard> {
 
   Future<void> _analyze() async {
     setState(() => _isLoading = true);
-    
+
     final analysis = await AIService().analyzeAuditById(widget.auditId);
-    
+
     setState(() {
       _analysis = analysis;
       _isLoading = false;
     });
-    
+
     widget.onAnalysisComplete?.call();
   }
 
@@ -277,22 +277,11 @@ class _AIAnalysisCardState extends State<AIAnalysisCard> {
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '🤖 Analyse IA',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        'via ${analysis.model}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withOpacity(0.5),
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    '🤖 Analyse IA',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 IconButton(
@@ -334,8 +323,7 @@ class _AIAnalysisCardState extends State<AIAnalysisCard> {
                     ),
                   ),
 
-                if (analysis.estimatedScore != null)
-                  const SizedBox(height: 20),
+                if (analysis.estimatedScore != null) const SizedBox(height: 20),
 
                 // Summary
                 if (analysis.summary.isNotEmpty) ...[
@@ -371,7 +359,8 @@ class _AIAnalysisCardState extends State<AIAnalysisCard> {
                   _buildSectionTitle('💡 Recommandations', theme,
                       color: theme.colorScheme.primary),
                   const SizedBox(height: 8),
-                  ...analysis.recommendations.map((item) => _buildListItem(item)),
+                  ...analysis.recommendations
+                      .map((item) => _buildListItem(item)),
                 ],
 
                 // Disclaimer

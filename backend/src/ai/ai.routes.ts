@@ -61,35 +61,38 @@ function buildAuditPrompt(auditData: any): string {
     })
     .join('\n\n');
 
-  return `Tu es un assistant d'analyse d'audit générique et objectif.
+  return `Tu es un assistant d'audit. Analyse ces réponses et fournis une évaluation COURTE et DIRECTE.
 
 TEMPLATE: ${templateName || 'Audit générique'}
 ${templateDescription ? `OBJECTIF: ${templateDescription}` : ''}
 
-RÉPONSES DE L'AUDIT:
+RÉPONSES:
 ${formattedResponses}
 
 Fournis une analyse structurée en français:
 
 ## RÉSUMÉ
-2-3 phrases décrivant l'état global de cet audit.
+1 phrase résumant l'état global.
 
 ## POINTS_FORTS
-- Point fort 1
-- Point fort 2
+- Élément conforme 1
+- Élément conforme 2
+(Maximum 3 points, format: "Élément - État")
 
 ## POINTS_DE_VIGILANCE  
-- Point à améliorer 1
-- Point à améliorer 2
+- Élément non conforme 1 → Action immédiate
+- Élément non conforme 2 → Action immédiate
+(Maximum 3 points, format: "Problème → Solution courte")
 
 ## SCORE_ESTIMÉ
-X/100 (justifie en 1 phrase)
+X/100
 
 ## RECOMMANDATIONS
-- Action recommandée 1
-- Action recommandée 2
+- Action prioritaire 1
+- Action prioritaire 2
+(Maximum 3 actions concrètes et courtes)
 
-Reste factuel, concis et objectif. Ne pas inventer d'informations.`;
+SOIS CONCIS. Pas de détails superflus. Réponses directes et actionnables.`;
 }
 
 function parseAIResponse(text: string): any {
