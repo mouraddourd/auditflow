@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { generateAnalysis, checkOllamaHealth } from './ollama.service';
+import { getAuditInsights, getRealTimeSuggestions } from './insights.service';
 import { requireAuth } from '../auth/auth.middleware';
 
 const router = Router();
@@ -47,6 +48,86 @@ router.post('/analyze', requireAuth, async (req, res) => {
       success: false,
       error: 'AI service unavailable',
       details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get audit insights with historical analysis
+router.get('/insights/:auditId', requireAuth, async (req, res) => {
+  try {
+    const auditId = String(req.params.auditId);
+    const organizationId = String(req.headers['x-organization-id'] || '');
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Organization ID required',
+      });
+    }
+
+    const insights = await getAuditInsights(auditId, organizationId);
+
+    if (!insights) {
+      return res.status(404).json({
+        success: false,
+        error: 'Audit not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      insights,
+    });
+  } catch (error) {
+    console.error('AI insights error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate insights',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// Get real-time suggestions for audit in progress
+router.post('/real-time-suggestions/:auditId', requireAuth, async (req, res) => {
+  try {
+    const auditId = String(req.params.auditId);
+    const organizationId = String(req.headers['x-organization-id'] || '');
+    const { answers } = req.body as { answers: { questionId: string; value: string }[] };
+
+    if (!organizationId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Organization ID required',
+      });
+    }
+
+    if (!answers || !Array.isArray(answers)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Answers array required in request body',
+      });
+    }
+
+    const suggestions = await getRealTimeSuggestions(auditId, organizationId, answers);
+
+    if (!suggestions) {
+      return res.status(404).json({
+        success: false,
+        error: 'Audit not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      suggestions,
+    });
+  } catch (error) {
+    console.error('Real-time suggestions error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate suggestions',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
