@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../core/config/responsive_config.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../hive/service.dart';
-import 'audit_fill_screen.dart';
 import '../../main.dart';
 import '../../services/sync_service.dart';
 
@@ -163,17 +162,8 @@ class _CreateAuditScreenState extends State<CreateAuditScreen>
       );
 
       if (mounted) {
-        // Naviguer directement vers l'écran de remplissage
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AuditFillScreen(
-              auditId: audit['id'] as String,
-              templateId: audit['template_id'] as String,
-              auditTitle: audit['title'] as String? ?? 'Audit',
-            ),
-          ),
-        );
+        // Retourner à la liste avec succès pour déclencher le refresh
+        Navigator.pop(context, true);
       }
     } catch (e) {
       debugPrint('Error creating audit: $e');
@@ -263,7 +253,8 @@ class _CreateAuditScreenState extends State<CreateAuditScreen>
                 ),
                 Expanded(
                     child: Divider(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.3))),
+                        color:
+                            theme.colorScheme.primary.withValues(alpha: 0.3))),
                 _StepIndicator(
                   step: 2,
                   label: 'Détails',
