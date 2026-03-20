@@ -4,6 +4,10 @@ import {
   createOrganization,
   getUserOrganizations,
   acceptInvitation,
+  createInvitation,
+  getInvitationInfo,
+  getOrganizationInvitations,
+  deleteInvitation,
 } from './organization.service';
 
 const router = Router();
@@ -79,6 +83,98 @@ router.post('/join/:token', async (req: Request, res: Response) => {
     const organization = await acceptInvitation(token, userId);
 
     res.json({ success: true, data: organization });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ success: false, error: message });
+  }
+});
+
+const createInvitationSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
+/**
+ * POST /organizations/:id/invitations - Create an invitation
+ */
+router.post('/:id/invitations', async (req: Request, res: Response) => {
+  try {
+    const userId = String(req.headers['x-user-id'] || '');
+    const { id: organizationId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const body = createInvitationSchema.parse(req.body);
+
+    const invitation = await createInvitation({
+      organizationId: organizationId as string,
+      email: body.email,
+      invitedBy: userId,
+    });
+
+    res.status(201).json({ success: true, data: invitation });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ success: false, error: message });
+  }
+});
+
+/**
+ * GET /organizations/:id/invitations - List invitations (admin only)
+ */
+router.get('/:id/invitations', async (req: Request, res: Response) => {
+  try {
+    const userId = String(req.headers['x-user-id'] || '');
+    const { id: organizationId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const invitations = await getOrganizationInvitations(
+      organizationId as string,
+      userId,
+    );
+
+    res.json({ success: true, data: invitations });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ success: false, error: message });
+  }
+});
+
+/**
+ * GET /invitations/:token/info - Get invitation info (public, no auth)
+ */
+router.get('/invitations/:token/info', async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params as { token: string };
+
+    const info = await getInvitationInfo(token);
+
+    res.json({ success: true, data: info });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ success: false, error: message });
+  }
+});
+
+/**
+ * DELETE /invitations/:id - Cancel an invitation
+ */
+router.delete('/invitations/:id', async (req: Request, res: Response) => {
+  try {
+    const userId = String(req.headers['x-user-id'] || '');
+    const { id: invitationId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    await deleteInvitation(invitationId as string, userId);
+
+    res.json({ success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.status(400).json({ success: false, error: message });

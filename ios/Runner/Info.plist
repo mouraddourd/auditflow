@@ -45,5 +45,24 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Deep Links: auditflow://join/{token} -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.auditflow.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>auditflow</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Universal Links: https://auditflow.duckdns.org -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:auditflow.duckdns.org</string>
+	</array>
 </dict>
 </plist>
