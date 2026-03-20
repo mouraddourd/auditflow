@@ -110,8 +110,13 @@ class AIService {
         ),
       );
 
+      debugPrint('AI: Response received: ${response.data}');
+
       if (response.data['success'] == true) {
-        return AIAnalysis.fromJson(response.data);
+        debugPrint('AI: Parsing analysis from response');
+        final analysis = AIAnalysis.fromJson(response.data);
+        debugPrint('AI: Analysis parsed successfully: ${analysis.toJson()}');
+        return analysis;
       }
 
       debugPrint('AI analysis failed: ${response.data['error']}');
@@ -119,8 +124,9 @@ class AIService {
     } on DioException catch (e) {
       debugPrint('AI analysis DioException: ${e.message}');
       return null;
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('AI analysis error: $e');
+      debugPrint('AI analysis stackTrace: $stackTrace');
       return null;
     }
   }
